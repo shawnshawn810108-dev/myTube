@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MyTube" />
+  <link rel="manifest" href="manifest.json" />
+  <title>MyTube 離線影音庫</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-elevated: #f6f6f6;
+      --bg-header: rgba(255, 255, 255, 0.94);
+      --text: #0f0f0f;
+      --sub: #606060;
+      --border: #eaeaea;
+      --pill-bg: #f2f2f2;
+      --pill-active-bg: #0f0f0f;
+      --pill-active-text: #ffffff;
+      --mini-bg: #f8f8f8;
+      --red: #ff0000;
+      --rust: #b83318;
+    }
+    [data-theme="dark"] {
+      --bg: #0b0b0b;
+      --bg-elevated: #181818;
+      --bg-header: rgba(11, 11, 11, 0.94);
+      --text: #f5f5f5;
+      --sub: #aaaaaa;
+      --border: #262626;
+      --pill-bg: #222222;
+      --pill-active-bg: #ffffff;
+      --pill-active-text: #0f0f0f;
+      --mini-bg: #1c1c1c;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top) 0 115px 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    #lockScreen {
+      position: fixed; inset: 0; background: var(--bg); color: var(--text); z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
+    }
+    .lock-icon {
+      width: 64px; height: 64px; border-radius: 50%; background: var(--pill-active-bg); color: var(--pill-active-text);
+      display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;
+    }
+    .pin-input {
+      width: 180px; height: 50px; font-size: 24px; text-align: center; letter-spacing: 10px;
+      background: var(--bg-elevated); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 16px; margin: 12px 0; outline: none;
+    }
+    .pin-input:focus { border-color: var(--text); }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 6px 16px; position: sticky; top: 0;
+      background: var(--bg-header); backdrop-filter: blur(12px); z-index: 100;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 7px; }
+    .yt-badge {
+      background: var(--red); color: #fff; width: 28px; height: 20px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center; font-size: 11px;
+    }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .nav-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      position: sticky; top: 44px; background: var(--bg-header); backdrop-filter: blur(12px); z-index: 99;
+    }
+    .tab-btn {
+      flex: 1; text-align: center; padding: 10px 4px; font-size: 14px; font-weight: 600;
+      color: var(--sub); border: none; background: transparent; position: relative; cursor: pointer;
+    }
+    .tab-btn.active { color: var(--text); font-weight: 800; }
+    .tab-btn.active::after {
+      content: ""; position: absolute; bottom: 0; left: 18%; right: 18%;
+      height: 2.5px; background: var(--red); border-radius: 2px;
+    }
+    .container { padding: 14px 16px; }
+    .pill-btn {
+      border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--border); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .pill-primary { background: var(--pill-active-bg); color: var(--pill-active-text); border-color: var(--pill-active-bg); }
+    .pill-ghost { background: var(--pill-bg); color: var(--text); border-color: transparent; }
+    .pill-sm { padding: 5px 12px; font-size: 12px; }
+    .song-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 6px; border-radius: 10px; margin-bottom: 4px; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .song-row:active, .song-row.playing { background: var(--bg-elevated); }
+    .song-left { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
+    .mp3-black-box {
+      width: 50px; height: 50px; border-radius: 8px;
+      background: #000000; color: #ffffff;
+      border: 1px solid #2c2c2c;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; letter-spacing: 0.8px;
+      flex-shrink: 0;
+    }
+    .song-info { overflow: hidden; flex: 1; }
+    .song-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .song-row.playing .song-title { color: #ff3b30; }
+    .song-meta {
+      font-size: 12px; color: var(--sub); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .song-more-btn {
+      background: transparent; border: none; color: var(--sub);
+      font-size: 18px; padding: 8px 10px; cursor: pointer; flex-shrink: 0;
+    }
+    .media-card { margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+    .media-thumb {
+      width: 100%; aspect-ratio: 16/9; background: #000000; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; position: relative; overflow: hidden; cursor: pointer;
+    }
+    .media-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .type-tag {
+      position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 700; color: #fff;
+    }
+    .tag-mp4 { background: rgba(15,15,15,0.85); }
+    .tag-mp3 { background: rgba(184,51,24,0.92); }
+    .media-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; gap: 8px; }
+    .media-title { font-size: 15px; font-weight: 700; line-height: 1.35; word-break: break-word; }
+    .media-sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
+    .pl-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; margin-bottom: 8px; cursor: pointer;
+    }
+    .pl-left { display: flex; align-items: center; gap: 14px; overflow: hidden; }
+    .pl-cover {
+      width: 112px; height: 64px; border-radius: 10px; background: #1e1e1e; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+      position: relative; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .pl-count {
+      position: absolute; bottom: 5px; right: 7px; background: rgba(0,0,0,0.7);
+      font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+    }
+    .dl-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .avatar-circle {
+      width: 54px; height: 54px; border-radius: 50%; background: var(--rust); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0;
+    }
+    .url-box {
+      width: 100%; height: 88px; border-radius: 18px; border: 1.5px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); padding: 12px 14px; font-size: 14px; resize: none; outline: none;
+    }
+    .url-box:focus { border-color: var(--text); }
+    .hist-card {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 14px; margin-bottom: 8px; border: 1px solid var(--border);
+      border-radius: 14px; background: var(--bg-elevated);
+    }
+    #miniPlayer {
+      position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
+      background: var(--mini-bg); border-top: 1px solid var(--border);
+      padding: 8px 14px calc(10px + env(safe-area-inset-bottom)) 14px;
+      z-index: 500; display: none;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.14);
+    }
+    .mini-progress-wrap {
+      width: 100%; height: 3px; background: var(--border); border-radius: 2px;
+      margin-bottom: 8px; overflow: hidden; cursor: pointer;
+    }
+    .mini-progress-bar {
+      height: 100%; width: 0%; background: var(--red); transition: width 0.2s linear;
+    }
+    .mini-content {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .mini-left { display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; }
+    .mini-cover {
+      width: 40px; height: 40px; border-radius: 6px; background: #000000; color: #ffffff;
+      border: 1px solid #333; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
+    .mini-text { overflow: hidden; flex: 1; }
+    .mini-title {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mini-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .mini-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .ctrl-icon-btn {
+      background: transparent; border: none; color: var(--text);
+      font-size: 20px; width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .ctrl-icon-btn:active { background: var(--pill-bg); }
+  </style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-icon">🔒</div>
+  <h2 id="lockTitle" style="margin:0; font-size:22px; font-weight:800;">MyTube 私人空間</h2>
+  <p id="lockDesc" style="color:var(--sub); font-size:13px; text-align:center; margin:8px 0 4px 0;">請輸入 4 碼數字密碼解鎖</p>
+  <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" />
+  <input id="pinConfirm" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="再次確認" style="display:none;" />
+  <button id="pinSubmitBtn" class="pill-btn pill-primary" style="width:200px; margin-top:8px;">解鎖進入</button>
+  <p id="lockMsg" style="color:#ff3b30; font-size:13px; margin-top:10px;"></p>
+</div>
+
+<div class="topbar">
+  <div class="logo-wrap">
+    <div class="yt-badge">▶</div>
+    <div class="brand">MyTube</div>
+  </div>
+  <div style="display:flex; gap:6px; align-items:center;">
+    <button id="themeToggleBtn" class="pill-btn pill-ghost pill-sm" onclick="cycleTheme()">🌓 自動</button>
+    <button class="pill-btn pill-ghost pill-sm" onclick="lockApp()">🔒</button>
+  </div>
+</div>
+
+<div class="nav-tabs">
+  <button class="tab-btn active" data-tab="ALL" onclick="switchTab('ALL')">全部</button>
+  <button class="tab-btn" data-tab="MP4" onclick="switchTab('MP4')">MP4</button>
+  <button class="tab-btn" data-tab="MP3" onclick="switchTab('MP3')">MP3</button>
+  <button class="tab-btn" data-tab="PLAYLIST" onclick="switchTab('PLAYLIST')">播放清單</button>
+  <button class="tab-btn" data-tab="DOWNLOAD" onclick="switchTab('DOWNLOAD')">下載</button>
+</div>
+
+<div id="mainContent" class="container"></div>
+
+<input type="file" id="filePicker" accept="video/mp4,audio/mp3,audio/mpeg,audio/mp4,audio/x-m4a,.mp4,.mp3,.m4a" multiple style="display:none;" onchange="handleFileImport(event)" />
+
+<div id="miniPlayer">
+  <div class="mini-progress-wrap" onclick="seekAudio(event)">
+    <div id="miniProgressBar" class="mini-progress-bar"></div>
+  </div>
+  <div class="mini-content">
+    <div class="mini-left">
+      <div class="mini-cover">MP3</div>
+      <div class="mini-text">
+        <div id="nowPlayingTitle" class="mini-title">未播放</div>
+        <div id="nowPlayingTime" class="mini-sub">MyTube 離線音樂 · 背景播放中</div>
+      </div>
+    </div>
+    <div class="mini-controls">
+      <button id="playPauseBtn" class="ctrl-icon-btn" onclick="togglePlayPause()">⏸</button>
+      <button class="ctrl-icon-btn" onclick="playNextInQueue()">⏭</button>
+    </div>
+  </div>
+  <audio id="bgAudioPlayer" playsinline></audio>
+</div>
+
+<script>
+let themeMode = localStorage.getItem('mytube_theme_mode') || 'auto';
+
+function applyTheme() {
+  const btn = document.getElementById('themeToggleBtn');
+  let targetTheme = 'light';
+  if (themeMode === 'auto') {
+    const hour = new Date().getHours();
+    targetTheme = (hour >= 18 || hour < 6) ? 'dark' : 'light';
+    if (btn) btn.textContent = '🌓 自動';
+  } else if (themeMode === 'dark') {
+    targetTheme = 'dark';
+    if (btn) btn.textContent = '🌙 深色';
+  } else {
+    targetTheme = 'light';
+    if (btn) btn.textContent = '☀️ 淺色';
+  }
+  document.documentElement.setAttribute('data-theme', targetTheme);
+  const metaTheme = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', targetTheme === 'dark' ? 'black-translucent' : 'default');
+  }
+}
+
+function cycleTheme() {
+  const order = ['auto', 'light', 'dark'];
+  themeMode = order[(order.indexOf(themeMode) + 1) % order.length];
+  localStorage.setItem('mytube_theme_mode', themeMode);
+  applyTheme();
+}
+
+applyTheme();
+setInterval(() => { if (themeMode === 'auto') applyTheme(); }, 60000);
+
+async function requestPersistentStorage() {
+  if (navigator.storage && navigator.storage.persist) {
+    await navigator.storage.persist();
+  }
+}
+
+const DB_NAME = 'MyTubeOfflineDB';
+const DB_VERSION = 1;
+let db = null;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('mediaFiles')) {
+        database.createObjectStore('mediaFiles', { keyPath: 'id' });
+      }
+      if (!database.objectStoreNames.contains('meta')) {
+        database.createObjectStore('meta', { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function dbGet(storeName, key) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+function dbGetAll(storeName) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+function dbPut(storeName, value) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+let currentTab = 'ALL';
+let selectedPlaylistId = null;
+let appMeta = {
+  pin: null,
+  playlists: [
+    { id: 'pl_downloaded', name: '已下載的內容', icon: '⬇', fileIds: [] },
+    { id: 'pl_fav', name: '喜歡的音樂', icon: '👍', fileIds: [] },
+    { id: 'pl_later', name: '稍後觀看', icon: '🕒', fileIds: [] }
+  ],
+  history: []
+};
+let playQueue = [];
+let currentQueueIndex = -1;
+let currentPlayingId = null;
+
+async function saveMeta() {
+  await dbPut('meta', { key: 'appMeta', data: appMeta });
+}
+
+async function setupAuth() {
+  const saved = await dbGet('meta', 'appMeta');
+  if (saved && saved.data) {
+    appMeta = saved.data;
+  } else {
+    await saveMeta();
+  }
+
+  const titleEl = document.getElementById('lockTitle');
+  const descEl = document.getElementById('lockDesc');
+  const confirmEl = document.getElementById('pinConfirm');
+  const btnEl = document.getElementById('pinSubmitBtn');
+  const msgEl = document.getElementById('lockMsg');
+
+  if (!appMeta.pin) {
+    titleEl.textContent = '首次使用 · 設定密碼';
+    descEl.textContent = '請設定一組 4 碼數字預設密碼';
+    confirmEl.style.display = 'block';
+    btnEl.textContent = '儲存密碼並進入';
+
+    btnEl.onclick = async () => {
+      const p1 = document.getElementById('pinInput').value.trim();
+      const p2 = confirmEl.value.trim();
+      if (!/^\d{4}$/.test(p1)) { msgEl.textContent = '請輸入 4 位純數字'; return; }
+      if (p1 !== p2) { msgEl.textContent = '兩次輸入的密碼不一致'; return; }
+      appMeta.pin = p1;
+      await saveMeta();
+      unlockApp();
+    };
+  } else {
+    titleEl.textContent = 'MyTube 私人空間';
+    descEl.textContent = '請輸入 4 碼數字密碼解鎖';
+    confirmEl.style.display = 'none';
+    btnEl.textContent = '解鎖進入';
+
+    btnEl.onclick = () => {
+      const p = document.getElementById('pinInput').value.trim();
+      if (p === appMeta.pin) {
+        unlockApp();
+      } else {
+        msgEl.textContent = '❌ 密碼錯誤，請再試一次';
+      }
+    };
+  }
+}
+
+function unlockApp() {
+  document.getElementById('pinInput').value = '';
+  document.getElementById('lockMsg').textContent = '';
+  document.getElementById('lockScreen').style.display = 'none';
+  renderCurrentView();
+}
+
+function lockApp() {
+  document.getElementById('lockScreen').style.display = 'flex';
+}
+
+async function handleFileImport(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  for (const file of files) {
+    const isMp4 = file.name.toLowerCase().endsWith('.mp4') || file.type.includes('video');
+    const fileRecord = {
+      id: 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      name: file.name.replace(/\.[^/.]+$/, ""),
+      fullName: file.name,
+      type: isMp4 ? 'MP4' : 'MP3',
+      mime: file.type || (isMp4 ? 'video/mp4' : 'audio/mpeg'),
+      blob: file,
+      addedAt: new Date().toLocaleDateString('zh-TW')
+    };
+    await dbPut('mediaFiles', fileRecord);
+    if (!appMeta.playlists[0].fileIds.includes(fileRecord.id)) {
+      appMeta.playlists[0].fileIds.unshift(fileRecord.id);
+    }
+  }
+  await saveMeta();
+  event.target.value = '';
+  renderCurrentView();
+}
+
+const audioPlayer = document.getElementById('bgAudioPlayer');
+
+function formatSec(sec) {
+  if (!isFinite(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+audioPlayer.addEventListener('timeupdate', () => {
+  const bar = document.getElementById('miniProgressBar');
+  const timeText = document.getElementById('nowPlayingTime');
+  if (audioPlayer.duration) {
+    const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+    bar.style.width = `${pct}%`;
+    timeText.textContent = `${formatSec(audioPlayer.currentTime)} / ${formatSec(audioPlayer.duration)} · 背景播放`;
+  }
+});
+
+audioPlayer.addEventListener('play', () => {
+  document.getElementById('playPauseBtn').textContent = '⏸';
+});
+
+audioPlayer.addEventListener('pause', () => {
+  document.getElementById('playPauseBtn').textContent = '▶';
+});
+
+audioPlayer.addEventListener('ended', () => playNextInQueue());
+
+function togglePlayPause() {
+  if (audioPlayer.paused) {
+    audioPlayer.play();
+  } else {
+    audioPlayer.pause();
+  }
+}
+
+function seekAudio(e) {
+  if (!audioPlayer.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  audioPlayer.currentTime = ratio * audioPlayer.duration;
+}
+
+async function playFileById(fileId, queueIds = null) {
+  const record = await dbGet('mediaFiles', fileId);
+  if (!record) return;
+
+  currentPlayingId = fileId;
+  if (queueIds) {
+    playQueue = queueIds;
+    currentQueueIndex = queueIds.indexOf(fileId);
+  }
+
+  const blobUrl = URL.createObjectURL(record.blob);
+  const miniPlayer = document.getElementById('miniPlayer');
+  miniPlayer.style.display = 'block';
+  document.getElementById('nowPlayingTitle').textContent = record.name;
+
+  audioPlayer.src = blobUrl;
+  audioPlayer.play();
+
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: record.name,
+      artist: 'MyTube 離線音樂庫',
+      album: 'MP3 背景播放'
+    });
+    navigator.mediaSession.setActionHandler('play', () => audioPlayer.play());
+    navigator.mediaSession.setActionHandler('pause', () => audioPlayer.pause());
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNextInQueue());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevInQueue());
+  }
+
+  renderCurrentView();
+}
+
+function playNextInQueue() {
+  if (!playQueue.length) return;
+  currentQueueIndex = (currentQueueIndex + 1) % playQueue.length;
+  playFileById(playQueue[currentQueueIndex]);
+}
+
+function playPrevInQueue() {
+  if (!playQueue.length) return;
+  currentQueueIndex = (currentQueueIndex - 1 + playQueue.length) % playQueue.length;
+  playFileById(playQueue[currentQueueIndex]);
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  selectedPlaylistId = null;
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  renderCurrentView();
+}
+
+async function renderCurrentView() {
+  const container = document.getElementById('mainContent');
+  const allFiles = await dbGetAll('mediaFiles');
+
+  if (currentTab === 'MP3') {
+    const mp3List = allFiles.filter(f => f.type === 'MP3').reverse();
+    const queueIds = mp3List.map(f => f.id);
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div>
+          <div style="font-size:20px; font-weight:800;">所有歌曲</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:2px;">共 ${mp3List.length} 首 MP3 音訊</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          ${mp3List.length ? `<button class="pill-btn pill-ghost pill-sm" onclick="playFileById('${mp3List[0].id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">全部播放</button>` : ''}
+          <button class="pill-btn pill-primary pill-sm" onclick="document.getElementById('filePicker').click()">+ 讀取歌曲</button>
+        </div>
+      </div>
+    `;
+
+    if (!mp3List.length) {
+      html += `<div style="text-align:center; padding:45px 10px; color:var(--sub); font-size:14px;">
+        目前還沒有 MP3 歌曲<br><br>點擊右上角「+ 讀取歌曲」選取手機內的音樂檔
+      </div>`;
+    } else {
+      for (const song of mp3List) {
+        const isPlaying = currentPlayingId === song.id;
+        html += `
+        <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${song.id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">
+          <div class="song-left">
+            <div class="mp3-black-box">MP3</div>
+            <div class="song-info">
+              <div class="song-title">${song.name}</div>
+              <div class="song-meta">本機音訊 · ${song.addedAt}</div>
+            </div>
+          </div>
+          <button class="song-more-btn" onclick="event.stopPropagation(); promptAddToPlaylist('${song.id}')">⋮</button>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  else if (currentTab === 'ALL' || currentTab === 'MP4') {
+    const filtered = allFiles.filter(f => currentTab === 'ALL' || f.type === currentTab).reverse();
+    const mp3Queue = filtered.filter(f => f.type === 'MP3').map(f => f.id);
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <span style="font-size:13px; color:var(--sub);">共 ${filtered.length} 個離線檔案</span>
+        <button class="pill-btn pill-primary pill-sm" onclick="document.getElementById('filePicker').click()">📲 讀取手機 MP4 / MP3</button>
+      </div>
+    `;
+
+    if (!filtered.length) {
+      html += `<div style="text-align:center; padding:40px 10px; color:var(--sub); font-size:14px;">
+        尚未匯入任何 ${currentTab === 'ALL' ? 'MP4 或 MP3' : currentTab} 檔案<br><br>
+        點擊右上角「讀取手機 MP4 / MP3」即可自動分類保存
+      </div>`;
+    } else {
+      for (const item of filtered) {
+        if (item.type === 'MP4') {
+          const videoUrl = URL.createObjectURL(item.blob);
+          html += `
+          <div class="media-card">
+            <div class="media-thumb"><video src="${videoUrl}" controls playsinline preload="metadata"></video><span class="type-tag tag-mp4">MP4</span></div>
+            <div class="media-row">
+              <div>
+                <div class="media-title">${item.name}</div>
+                <div class="media-sub">MP4 影片 · ${item.addedAt}</div>
+              </div>
+              <button class="pill-btn pill-ghost pill-sm" onclick="promptAddToPlaylist('${item.id}')">➕ 清單</button>
+            </div>
+          </div>`;
+        } else {
+          const isPlaying = currentPlayingId === item.id;
+          html += `
+          <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${item.id}', ${JSON.stringify(mp3Queue).replace(/"/g, '&quot;')})">
+            <div class="song-left">
+              <div class="mp3-black-box">MP3</div>
+              <div class="song-info">
+                <div class="song-title">${item.name}</div>
+                <div class="song-meta">MP3 音訊 · ${item.addedAt}</div>
+              </div>
+            </div>
+            <button class="song-more-btn" onclick="event.stopPropagation(); promptAddToPlaylist('${item.id}')">⋮</button>
+          </div>`;
+        }
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  else if (currentTab === 'PLAYLIST') {
+    if (selectedPlaylistId) {
+      const pl = appMeta.playlists.find(p => p.id === selectedPlaylistId);
+      const plFiles = pl.fileIds.map(id => allFiles.find(f => f.id === id)).filter(Boolean);
+      const qIds = plFiles.filter(f => f.type === 'MP3').map(f => f.id);
+
+      let html = `
+        <button class="pill-btn pill-ghost pill-sm" onclick="selectedPlaylistId=null; renderCurrentView();" style="margin-bottom:12px;">← 返回播放清單</button>
+        <h2 style="margin:0 0 4px 0; font-size:20px;">${pl.icon} ${pl.name}</h2>
+        <div style="font-size:12px; color:var(--sub); margin-bottom:14px;">私人 · 播放清單 · ${plFiles.length} 個項目</div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          ${qIds.length ? `<button class="pill-btn pill-primary pill-sm" onclick="playFileById('${qIds[0]}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})">▶ 全部播放</button>` : ''}
+          <button class="pill-btn pill-ghost pill-sm" onclick="openBatchSelectForPlaylist('${pl.id}')">✏️ 勾選歌曲</button>
+        </div>
+      `;
+
+      if (!plFiles.length) {
+        html += `<p style="color:var(--sub); font-size:13px;">清單目前是空的，點擊「勾選歌曲」從已下載的手機檔案加入。</p>`;
+      } else {
+        plFiles.forEach((f) => {
+          const isPlaying = currentPlayingId === f.id;
+          html += `
+          <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${f.id}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})">
+            <div class="song-left">
+              <div class="mp3-black-box">${f.type}</div>
+              <div class="song-info">
+                <div class="song-title">${f.name}</div>
+                <div class="song-meta">${f.type} · 點擊播放</div>
+              </div>
+            </div>
+            <span style="color:var(--sub); padding:0 8px;">▶</span>
+          </div>`;
+        });
+      }
+      container.innerHTML = html;
+      return;
+    }
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="font-size:20px; font-weight:800;">媒體庫 · 播放清單</div>
+        <button class="pill-btn pill-primary pill-sm" onclick="createNewPlaylist()">➕ 新增清單</button>
+      </div>
+    `;
+
+    for (const pl of appMeta.playlists) {
+      const validCount = pl.fileIds.filter(id => allFiles.some(f => f.id === id)).length;
+      html += `
+      <div class="pl-item" onclick="selectedPlaylistId='${pl.id}'; renderCurrentView();">
+        <div class="pl-left">
+          <div class="pl-cover">
+            <span>${pl.icon}</span>
+            <span class="pl-count">≡ ${validCount}</span>
+          </div>
+          <div style="overflow:hidden;">
+            <div style="font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${pl.name}</div>
+            <div style="font-size:12px; color:var(--sub); margin-top:3px;">私人 · 播放清單 · ${validCount} 個項目</div>
+          </div>
+        </div>
+        <span style="color:var(--sub); font-size:18px; padding-left:8px;">⋮</span>
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  else if (currentTab === 'DOWNLOAD') {
+    let histHtml = '';
+    if (!appMeta.history.length) {
+      histHtml = '<div style="color:var(--sub); font-size:13px;">尚無下載紀錄</div>';
+    } else {
+      for (const h of [...appMeta.history].reverse()) {
+        const bg = h.format === 'MP4' ? '#0f0f0f' : '#b83318';
+        histHtml += `
+        <div class="hist-card">
+          <div style="overflow:hidden; padding-right:10px;">
+            <div style="font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.title}</div>
+            <div style="font-size:11px; color:var(--sub); margin-top:3px;">${h.time}</div>
+          </div>
+          <span style="background:${bg}; color:#fff; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; flex-shrink:0;">${h.format}</span>
+        </div>`;
+      }
+    }
+
+    container.innerHTML = `
+      <div class="dl-header">
+        <div class="avatar-circle">Y</div>
+        <div>
+          <div style="font-size:20px; font-weight:800;">YouTube 下載器</div>
+          <div style="font-size:12px; color:var(--sub);">支援單一與多連結批次下載 · 歷史永久保存</div>
+        </div>
+      </div>
+
+      <select id="dlFormat" style="border-radius:999px; border:1px solid var(--border); padding:6px 14px; font-size:13px; font-weight:600; margin-bottom:10px; background:var(--bg-elevated); color:var(--text);">
+        <option value="MP3">MP3 (純音訊)</option>
+        <option value="MP4">MP4 (高畫質影片)</option>
+      </select>
+
+      <textarea id="dlUrls" class="url-box" placeholder="在此貼上 1 個或多個 YouTube 網址（用空白鍵或換行隔開）..."></textarea>
+
+      <div style="display:flex; gap:10px; margin:12px 0 18px 0;">
+        <button class="pill-btn pill-primary" style="flex:1;" onclick="processBatchDownload()">開始下載</button>
+        <button class="pill-btn pill-ghost" style="flex:1;" onclick="document.getElementById('dlUrls').value=''">清空網址</button>
+      </div>
+
+      <div id="dlStatus" style="font-size:13px; color:var(--text); margin-bottom:12px;"></div>
+
+      <div style="font-size:18px; font-weight:800; margin:14px 0 10px 0;">下載紀錄 <span style="font-weight:400; color:var(--sub);">&gt;</span></div>
+      ${histHtml}
+    `;
+  }
+}
+
+async function createNewPlaylist() {
+  const name = prompt('請輸入新播放清單名稱（例如：開車音樂、運動歌單）：');
+  if (!name || !name.trim()) return;
+  appMeta.playlists.push({
+    id: 'pl_' + Date.now(),
+    name: name.trim(),
+    icon: '🎵',
+    fileIds: []
+  });
+  await saveMeta();
+  renderCurrentView();
+}
+
+async function promptAddToPlaylist(fileId) {
+  const names = appMeta.playlists.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
+  const choice = prompt(`請輸入要加入的播放清單編號：\n${names}`);
+  const idx = parseInt(choice, 10) - 1;
+  if (appMeta.playlists[idx]) {
+    if (!appMeta.playlists[idx].fileIds.includes(fileId)) {
+      appMeta.playlists[idx].fileIds.push(fileId);
+      await saveMeta();
+      alert(`已加入「${appMeta.playlists[idx].name}」！`);
+    }
+  }
+}
+
+async function openBatchSelectForPlaylist(plId) {
+  const allFiles = await dbGetAll('mediaFiles');
+  const pl = appMeta.playlists.find(p => p.id === plId);
+  if (!allFiles.length) { alert('請先匯入手機 MP3/MP4 檔案'); return; }
+  const listStr = allFiles.map((f, i) => `${i + 1}. [${f.type}] ${f.name}`).join('\n');
+  const ans = prompt(`輸入要收錄的曲目編號（多個請用逗號隔開，例如 1,2,3）：\n${listStr}`);
+  if (ans !== null) {
+    const indices = ans.split(/[,，\s]+/).map(n => parseInt(n, 10) - 1);
+    pl.fileIds = indices.filter(i => allFiles[i]).map(i => allFiles[i].id);
+    await saveMeta();
+    renderCurrentView();
+  }
+}
+
+async function processBatchDownload() {
+  const raw = document.getElementById('dlUrls').value.trim();
+  const fmt = document.getElementById('dlFormat').value;
+  const statusEl = document.getElementById('dlStatus');
+  const urls = raw.split(/[\s,，]+/).filter(Boolean);
+
+  if (!urls.length) { statusEl.textContent = '⚠️ 請先貼上至少一個 YouTube 網址'; return; }
+
+  for (const url of urls) {
+    appMeta.history.push({
+      title: url,
+      format: fmt,
+      time: new Date().toLocaleString('zh-TW', { hour12: false })
+    });
+  }
+  await saveMeta();
+  statusEl.innerHTML = `✅ 已將 <b>${urls.length}</b> 個連結寫入下載紀錄！<br><span style="color:var(--sub);">（搭配 Carnets 下載後，至「MP3 / 全部」讀取檔案即可永久保存與背景連播）</span>`;
+  renderCurrentView();
+}
+
+(async () => {
+  await requestPersistentStorage();
+  await initDB();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  await setupAuth();
+})();
+</script>
+</body>
+</html>
