@@ -1,953 +1,1247 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="MyTube" />
-  <link rel="manifest" href="manifest.json" />
-  <title>MyTube 離線影音庫</title>
-  <style>
-    :root {
-      --bg: #ffffff;
-      --bg-elevated: #f6f6f6;
-      --bg-header: rgba(255, 255, 255, 0.94);
-      --text: #0f0f0f;
-      --sub: #606060;
-      --border: #eaeaea;
-      --pill-bg: #f2f2f2;
-      --pill-active-bg: #0f0f0f;
-      --pill-active-text: #ffffff;
-      --mini-bg: #f8f8f8;
-      --red: #ff0000;
-      --rust: #b83318;
-    }
-    [data-theme="dark"] {
-      --bg: #0b0b0b;
-      --bg-elevated: #181818;
-      --bg-header: rgba(11, 11, 11, 0.94);
-      --text: #f5f5f5;
-      --sub: #aaaaaa;
-      --border: #262626;
-      --pill-bg: #222222;
-      --pill-active-bg: #ffffff;
-      --pill-active-text: #0f0f0f;
-      --mini-bg: #1c1c1c;
-    }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      margin: 0;
-      padding: env(safe-area-inset-top) 0 115px 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-      max-width: 480px;
-      margin-left: auto;
-      margin-right: auto;
-      transition: background 0.25s ease, color 0.25s ease;
-    }
-    #lockScreen {
-      position: fixed; inset: 0; background: var(--bg); color: var(--text); z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
-    }
-    .lock-icon {
-      width: 64px; height: 64px; border-radius: 50%; background: var(--pill-active-bg); color: var(--pill-active-text);
-      display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;
-    }
-    .pin-input {
-      width: 190px; height: 50px; font-size: 24px; text-align: center; letter-spacing: 10px;
-      background: var(--bg-elevated); color: var(--text);
-      border: 1.5px solid var(--border); border-radius: 16px; margin: 10px 0; outline: none;
-    }
-    .pin-input:focus { border-color: var(--text); }
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px 6px 16px; position: sticky; top: 0;
-      background: var(--bg-header); backdrop-filter: blur(12px); z-index: 100;
-    }
-    .logo-wrap { display: flex; align-items: center; gap: 7px; }
-    .yt-badge {
-      background: var(--red); color: #fff; width: 28px; height: 20px; border-radius: 5px;
-      display: flex; align-items: center; justify-content: center; font-size: 11px;
-    }
-    .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-    .nav-tabs {
-      display: flex; border-bottom: 1px solid var(--border);
-      position: sticky; top: 44px; background: var(--bg-header); backdrop-filter: blur(12px); z-index: 99;
-    }
-    .tab-btn {
-      flex: 1; text-align: center; padding: 10px 4px; font-size: 14px; font-weight: 600;
-      color: var(--sub); border: none; background: transparent; position: relative; cursor: pointer;
-    }
-    .tab-btn.active { color: var(--text); font-weight: 800; }
-    .tab-btn.active::after {
-      content: ""; position: absolute; bottom: 0; left: 18%; right: 18%;
-      height: 2.5px; background: var(--red); border-radius: 2px;
-    }
-    .container { padding: 14px 16px; }
-    .pill-btn {
-      border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600;
-      border: 1px solid var(--border); cursor: pointer;
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-    }
-    .pill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .pill-primary { background: var(--pill-active-bg); color: var(--pill-active-text); border-color: var(--pill-active-bg); }
-    .pill-ghost { background: var(--pill-bg); color: var(--text); border-color: transparent; }
-    .pill-sm { padding: 5px 12px; font-size: 12px; }
-    .song-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 6px; border-radius: 10px; margin-bottom: 4px; cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .song-row:active, .song-row.playing { background: var(--bg-elevated); }
-    .song-left { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
-    .mp3-black-box {
-      width: 50px; height: 50px; border-radius: 8px;
-      background: #000000; color: #ffffff;
-      border: 1px solid #2c2c2c;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 800; letter-spacing: 0.8px;
-      flex-shrink: 0;
-    }
-    .song-info { overflow: hidden; flex: 1; }
-    .song-title {
-      font-size: 15px; font-weight: 600; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .song-row.playing .song-title { color: #ff3b30; }
-    .song-meta {
-      font-size: 12px; color: var(--sub); margin-top: 3px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .song-more-btn {
-      background: transparent; border: none; color: var(--sub);
-      font-size: 18px; padding: 8px 10px; cursor: pointer; flex-shrink: 0;
-    }
-    .media-card { margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
-    .media-thumb {
-      width: 100%; aspect-ratio: 16/9; background: #000000; border-radius: 12px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: #fff; position: relative; overflow: hidden; cursor: pointer;
-    }
-    .media-thumb video { width: 100%; height: 100%; object-fit: cover; }
-    .type-tag {
-      position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; border-radius: 4px;
-      font-size: 11px; font-weight: 700; color: #fff;
-    }
-    .tag-mp4 { background: rgba(15,15,15,0.85); }
-    .media-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; gap: 8px; }
-    .media-title { font-size: 15px; font-weight: 700; line-height: 1.35; word-break: break-word; }
-    .media-sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
-    .pl-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 0; margin-bottom: 8px; cursor: pointer;
-    }
-    .pl-left { display: flex; align-items: center; gap: 14px; overflow: hidden; }
-    .pl-cover {
-      width: 112px; height: 64px; border-radius: 10px; background: #1e1e1e; color: #fff;
-      display: flex; align-items: center; justify-content: center; font-size: 24px;
-      position: relative; flex-shrink: 0; border: 1px solid var(--border);
-    }
-    .pl-count {
-      position: absolute; bottom: 5px; right: 7px; background: rgba(0,0,0,0.7);
-      font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
-    }
-    .dl-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
-    .avatar-circle {
-      width: 54px; height: 54px; border-radius: 50%; background: var(--rust); color: #fff;
-      display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0;
-    }
-    .url-box {
-      width: 100%; height: 92px; border-radius: 18px; border: 1.5px solid var(--border);
-      background: var(--bg-elevated); color: var(--text); padding: 12px 14px; font-size: 14px; resize: none; outline: none;
-    }
-    .url-box:focus { border-color: var(--text); }
-    .hist-card {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 11px 14px; margin-bottom: 8px; border: 1px solid var(--border);
-      border-radius: 14px; background: var(--bg-elevated);
-    }
-    #miniPlayer {
-      position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
-      background: var(--mini-bg); border-top: 1px solid var(--border);
-      padding: 8px 14px calc(10px + env(safe-area-inset-bottom)) 14px;
-      z-index: 500; display: none;
-      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.14);
-    }
-    .mini-progress-wrap {
-      width: 100%; height: 3px; background: var(--border); border-radius: 2px;
-      margin-bottom: 8px; overflow: hidden; cursor: pointer;
-    }
-    .mini-progress-bar {
-      height: 100%; width: 0%; background: var(--red); transition: width 0.2s linear;
-    }
-    .mini-content { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-    .mini-left { display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; }
-    .mini-cover {
-      width: 40px; height: 40px; border-radius: 6px; background: #000000; color: #ffffff;
-      border: 1px solid #333; display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; flex-shrink: 0;
-    }
-    .mini-text { overflow: hidden; flex: 1; }
-    .mini-title {
-      font-size: 14px; font-weight: 700; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .mini-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
-    .mini-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-    .ctrl-icon-btn {
-      background: transparent; border: none; color: var(--text);
-      font-size: 20px; width: 38px; height: 38px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
-    }
-    .ctrl-icon-btn:active { background: var(--pill-bg); }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>MyTube - 影音與典藏書閣</title>
+<!-- Google Fonts: 低調奢華中英襯線/手寫與高可讀性字型 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- PDF.js & Mammoth.js (Word .docx 解析) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root {
+    --bg-main: #0f1015;
+    --bg-card: #181a22;
+    --bg-elevated: #222530;
+    --gold-primary: #d4af37;
+    --gold-soft: #b89758;
+    --gold-glow: rgba(212, 175, 55, 0.25);
+    --text-main: #eae6df;
+    --text-muted: #9a958c;
+    --border-subtle: rgba(212, 175, 55, 0.18);
+    --danger: #cf5c5c;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 0;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding-bottom: 110px;
+    overflow-x: hidden;
+  }
+
+  /* 頂部奢華橫幅 */
+  header {
+    position: sticky; top: 0; z-index: 40;
+    background: linear-gradient(180deg, rgba(15,16,21,0.98) 0%, rgba(15,16,21,0.92) 100%);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 14px 16px 10px;
+  }
+  .header-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand-title {
+    font-family: 'Cinzel', 'Noto Serif TC', serif;
+    font-size: 22px; font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #f3e5ab 0%, #d4af37 50%, #aa8220 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--gold-primary);
+    border-radius: 8px; padding: 6px 10px;
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .icon-btn:active { transform: scale(0.96); }
+
+  /* 導覽橫幅分頁：影片 / 音樂 / 電子書 */
+  .nav-tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; background: var(--bg-card);
+    padding: 4px; border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+  }
+  .tab-btn {
+    background: transparent; border: none;
+    color: var(--text-muted);
+    padding: 9px 0; border-radius: 9px;
+    font-size: 15px; font-weight: 500;
+    cursor: pointer; transition: all 0.25s ease;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #2a261d 0%, #1c1a15 100%);
+    color: var(--gold-primary);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    font-weight: 700;
+  }
+
+  /* 主容器與資料夾路徑指示 */
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  .folder-banner {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-card); border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 14px;
+    font-size: 13px; color: var(--gold-soft);
+  }
+  .folder-path { font-family: monospace; letter-spacing: 0.5px; }
+
+  /* 匯入與新增操作區 */
+  .action-bar {
+    display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .primary-btn {
+    flex: 1; min-width: 140px;
+    background: linear-gradient(135deg, #d4af37 0%, #a88420 100%);
+    color: #111; border: none; border-radius: 10px;
+    padding: 12px 14px; font-size: 14px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    box-shadow: 0 4px 14px var(--gold-glow);
+  }
+  .secondary-btn {
+    flex: 1; min-width: 140px;
+    background: var(--bg-elevated);
+    color: var(--gold-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+
+  /* 檔案列表卡片 */
+  .media-list { display: flex; flex-direction: column; gap: 12px; }
+  .media-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px; padding: 14px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    transition: border-color 0.2s;
+  }
+  .media-card.playing {
+    border-color: var(--gold-primary);
+    background: linear-gradient(90deg, rgba(212,175,55,0.08) 0%, var(--bg-card) 100%);
+  }
+  .media-info { flex: 1; min-width: 0; cursor: pointer; }
+  .media-title {
+    font-size: 15px; font-weight: 600; color: var(--text-main);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .media-meta {
+    font-size: 12px; color: var(--text-muted);
+    display: flex; gap: 10px; align-items: center;
+  }
+  .badge {
+    background: rgba(212,175,55,0.12); color: var(--gold-primary);
+    padding: 2px 7px; border-radius: 4px; font-size: 11px;
+    border: 1px solid rgba(212,175,55,0.25);
+  }
+  .card-actions { display: flex; gap: 6px; }
+  .mini-btn {
+    background: var(--bg-elevated); border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-main); border-radius: 8px;
+    padding: 7px 10px; font-size: 12px; cursor: pointer;
+  }
+  .mini-btn.gold { color: var(--gold-primary); border-color: var(--border-subtle); }
+  .mini-btn.del { color: var(--danger); }
+
+  /* 影片播放器區塊 */
+  #video-stage {
+    display: none; background: #000; border-radius: 12px;
+    overflow: hidden; margin-bottom: 16px;
+    border: 1px solid var(--border-subtle);
+  }
+  #video-stage video { width: 100%; max-height: 45vh; display: block; }
+
+  /* 底部懸浮統一播放器（支援影片/音樂/電子書背景朗讀 + 0.5/1/2/3倍速） */
+  .dock-player {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+    background: rgba(20, 22, 29, 0.97);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--gold-primary);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.65);
+  }
+  .dock-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; gap: 10px;
+  }
+  .now-playing {
+    font-size: 13px; color: var(--gold-primary); font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+  }
+  .speed-group {
+    display: flex; gap: 4px; background: var(--bg-main);
+    padding: 3px; border-radius: 8px; border: 1px solid var(--border-subtle);
+  }
+  .speed-btn {
+    background: transparent; border: none; color: var(--text-muted);
+    font-size: 11px; font-weight: 700; padding: 4px 7px;
+    border-radius: 5px; cursor: pointer;
+  }
+  .speed-btn.active {
+    background: var(--gold-primary); color: #111;
+  }
+  .dock-controls {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .ctrl-btns { display: flex; align-items: center; gap: 12px; }
+  .play-circle {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--gold-primary); color: #111; border: none;
+    font-size: 16px; font-weight: bold; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .progress-wrap {
+    flex: 1; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted);
+  }
+  input[type="range"] {
+    flex: 1; accent-color: var(--gold-primary); height: 4px;
+  }
+
+  /* 彈窗 Modal（貼上文字 / PIN 鎖） */
+  .modal {
+    display: none; position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,0.82); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal.open { display: flex; }
+  .modal-card {
+    background: var(--bg-card); border: 1px solid var(--gold-primary);
+    border-radius: 16px; width: 100%; max-width: 520px;
+    padding: 20px; box-shadow: 0 12px 40px rgba(0,0,0,0.8);
+  }
+  .modal-title {
+    font-family: 'Noto Serif TC', serif; font-size: 18px;
+    color: var(--gold-primary); margin: 0 0 14px;
+  }
+  .input-field, .textarea-field {
+    width: 100%; background: var(--bg-main);
+    border: 1px solid var(--border-subtle); border-radius: 10px;
+    color: var(--text-main); padding: 11px 12px;
+    font-size: 14px; margin-bottom: 12px; font-family: inherit;
+  }
+  .textarea-field { min-height: 180px; resize: vertical; line-height: 1.6; }
+
+  /* =========================================================
+     歐洲中古世紀典藏閱讀器 (Medieval Luxury E-Book Reader)
+     ========================================================= */
+  #ebook-reader {
+    display: none; position: fixed; inset: 0; z-index: 70;
+    flex-direction: column;
+    transition: background 0.35s ease, color 0.35s ease;
+  }
+  #ebook-reader.open { display: flex; }
+
+  /* 主題 1：深色黑曜金典 (Obsidian Velvet - 夜間護眼首選) */
+  .theme-obsidian {
+    background: radial-gradient(circle at center, #1a1917 0%, #0d0c0b 100%);
+    color: #dfd8c8;
+    --reader-bar: rgba(18, 17, 15, 0.95);
+    --reader-border: rgba(212, 175, 55, 0.32);
+    --page-bg: #161513;
+    --page-shadow: 0 10px 35px rgba(0,0,0,0.85), inset 0 0 40px rgba(212,175,55,0.03);
+    --ornament: #c5a059;
+  }
+  /* 主題 2：中古羊皮紙手稿 (Medieval Parchment - 低反光暖調護眼) */
+  .theme-parchment {
+    background: #d8c8a8;
+    color: #2c2116;
+    --reader-bar: rgba(216, 200, 168, 0.96);
+    --reader-border: rgba(92, 64, 35, 0.35);
+    --page-bg: linear-gradient(135deg, #efe4cc 0%, #e5d4b3 50%, #dcc79e 100%);
+    --page-shadow: 0 12px 32px rgba(44,33,22,0.28), inset 0 0 60px rgba(139, 98, 52, 0.16);
+    --ornament: #7a4b22;
+  }
+  /* 主題 3：修道院燙金典籍 (Abbey Gold & Burgundy - 歐洲古典宮廷風) */
+  .theme-abbey {
+    background: #1c1215;
+    color: #eadcc5;
+    --reader-bar: rgba(28, 18, 21, 0.96);
+    --reader-border: rgba(212, 175, 55, 0.4);
+    --page-bg: linear-gradient(180deg, #26181c 0%, #1e1316 100%);
+    --page-shadow: 0 12px 35px rgba(0,0,0,0.8), inset 0 0 45px rgba(212,175,55,0.05);
+    --ornament: #d4af37;
+  }
+  /* 主題 4：皇家墨綠書房 (Emerald Library - 護眼舒緩綠) */
+  .theme-emerald {
+    background: #101c18;
+    color: #dce5df;
+    --reader-bar: rgba(16, 28, 24, 0.96);
+    --reader-border: rgba(184, 151, 88, 0.35);
+    --page-bg: linear-gradient(180deg, #162620 0%, #111e19 100%);
+    --page-shadow: 0 12px 35px rgba(0,0,0,0.8), inset 0 0 40px rgba(184,151,88,0.04);
+    --ornament: #c8aa6e;
+  }
+
+  /* 低調奢華字型選擇 */
+  .font-song { font-family: 'Noto Serif TC', 'Cormorant Garamond', Georgia, serif; }
+  .font-kai  { font-family: 'BiauKai', 'DFKai-SB', 'KaiTi', 'Noto Serif TC', serif; }
+  .font-ming { font-family: 'PMingLiU', 'MingLiU', 'Cinzel', 'Noto Serif TC', serif; }
+  .font-sans { font-family: 'Noto Sans TC', -apple-system, sans-serif; }
+
+  .reader-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px;
+    background: var(--reader-bar);
+    border-bottom: 1px solid var(--reader-border);
+    gap: 8px;
+  }
+  .reader-book-title {
+    font-size: 14px; font-weight: 700; color: var(--ornament);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+  }
+
+  /* 閱讀控制工具列（主題、字型、翻頁/捲動模式、字級） */
+  .reader-toolbar {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 8px 12px;
+    background: var(--reader-bar);
+    border-bottom: 1px solid var(--reader-border);
+    align-items: center; justify-content: space-between;
+    font-size: 12px;
+  }
+  .tool-select {
+    background: rgba(128,128,128,0.15);
+    color: inherit; border: 1px solid var(--reader-border);
+    border-radius: 6px; padding: 4px 6px; font-size: 12px;
+  }
+  .tool-select option { background: #1a1a1a; color: #eee; }
+
+  /* 書頁舞台 */
+  .book-stage {
+    flex: 1; overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px;
+  }
+  .book-leaf {
+    width: 100%; max-width: 680px; height: 100%;
+    background: var(--page-bg);
+    box-shadow: var(--page-shadow);
+    border: 1px solid var(--reader-border);
+    border-radius: 6px 14px 14px 6px;
+    padding: 24px 22px;
+    position: relative;
+    overflow-y: auto;
+    line-height: 1.95;
+    letter-spacing: 0.06em;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+  }
+  /* 書脊裝訂線效果 */
+  .book-leaf::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 14px;
+    background: linear-gradient(90deg, rgba(0,0,0,0.28) 0%, rgba(255,255,255,0.05) 60%, transparent 100%);
+    pointer-events: none;
+  }
+  /* 歐洲中古世紀章節花飾 */
+  .medieval-ornament {
+    text-align: center; color: var(--ornament);
+    font-family: 'Cinzel', serif; font-size: 13px;
+    letter-spacing: 4px; margin-bottom: 14px;
+    opacity: 0.85;
+  }
+  /* 翻頁動畫狀態 */
+  .flip-next { transform: perspective(1000px) rotateY(-12deg) translateX(-18px); opacity: 0.25; }
+  .flip-prev { transform: perspective(1000px) rotateY(12deg) translateX(18px); opacity: 0.25; }
+
+  /* 閱讀器底部翻頁與朗讀列 */
+  .reader-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--reader-bar);
+    border-top: 1px solid var(--reader-border);
+    gap: 8px;
+  }
+  .page-nav-btn {
+    background: rgba(128,128,128,0.16);
+    border: 1px solid var(--reader-border);
+    color: inherit; border-radius: 8px;
+    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .tts-highlight {
+    background: rgba(212, 175, 55, 0.28);
+    border-bottom: 1px solid var(--gold-primary);
+    border-radius: 3px; padding: 1px 2px;
+  }
+</style>
 </head>
 <body>
 
-<div id="lockScreen">
-  <div class="lock-icon">🔒</div>
-  <h2 id="lockTitle" style="margin:0; font-size:22px; font-weight:800;">MyTube 私人空間</h2>
-  <p id="lockDesc" style="color:var(--sub); font-size:13px; text-align:center; margin:8px 0 4px 0;">請輸入 4 碼數字密碼解鎖</p>
-  <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
-  <input id="pinConfirm" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="再次確認" autocomplete="off" style="display:none;" />
-  <button id="pinSubmitBtn" class="pill-btn pill-primary" style="width:200px; margin-top:8px;">解鎖進入</button>
-  <p id="lockMsg" style="color:#ff3b30; font-size:13px; margin-top:10px; min-height:18px;"></p>
-  <button id="resetPinBtn" style="display:none; margin-top:18px; background:none; border:none; color:var(--sub); font-size:12px; text-decoration:underline; cursor:pointer;" onclick="forgotOrResetPin()">忘記密碼？重設此裝置密碼</button>
-</div>
-
-<div class="topbar">
-  <div class="logo-wrap">
-    <div class="yt-badge">▶</div>
-    <div class="brand">MyTube</div>
-  </div>
-  <div style="display:flex; gap:6px; align-items:center;">
-    <button id="themeToggleBtn" class="pill-btn pill-ghost pill-sm" onclick="cycleTheme()">🌓 自動</button>
-    <button class="pill-btn pill-ghost pill-sm" onclick="lockApp()">🔒</button>
-  </div>
-</div>
-
-<div class="nav-tabs">
-  <button class="tab-btn active" data-tab="ALL" onclick="switchTab('ALL')">全部</button>
-  <button class="tab-btn" data-tab="MP4" onclick="switchTab('MP4')">MP4</button>
-  <button class="tab-btn" data-tab="MP3" onclick="switchTab('MP3')">MP3</button>
-  <button class="tab-btn" data-tab="PLAYLIST" onclick="switchTab('PLAYLIST')">播放清單</button>
-  <button class="tab-btn" data-tab="DOWNLOAD" onclick="switchTab('DOWNLOAD')">下載</button>
-</div>
-
-<div id="mainContent" class="container"></div>
-
-<input type="file" id="filePicker" accept="video/mp4,audio/mp3,audio/mpeg,audio/mp4,audio/x-m4a,.mp4,.mp3,.m4a" multiple style="display:none;" onchange="handleFileImport(event)" />
-
-<div id="miniPlayer">
-  <div class="mini-progress-wrap" onclick="seekAudio(event)">
-    <div id="miniProgressBar" class="mini-progress-bar"></div>
-  </div>
-  <div class="mini-content">
-    <div class="mini-left">
-      <div class="mini-cover">MP3</div>
-      <div class="mini-text">
-        <div id="nowPlayingTitle" class="mini-title">未播放</div>
-        <div id="nowPlayingTime" class="mini-sub">MyTube 離線音樂 · 背景播放中</div>
-      </div>
+<header>
+  <div class="header-top">
+    <div class="brand">
+      <span style="font-size:20px;">⚜️</span>
+      <span class="brand-title">MYTUBE</span>
     </div>
-    <div class="mini-controls">
-      <button id="playPauseBtn" class="ctrl-icon-btn" onclick="togglePlayPause()">⏸</button>
-      <button class="ctrl-icon-btn" onclick="playNextInQueue()">⏭</button>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="exportToMyTubeFolder()" title="匯出備份至手機 MYTUBE 資料夾">📂 同步本機資料夾</button>
+      <button class="icon-btn" onclick="togglePinLock()" id="pin-btn">🔓 PIN</button>
     </div>
   </div>
-  <audio id="bgAudioPlayer" playsinline></audio>
+  <nav class="nav-tabs">
+    <button class="tab-btn active" data-tab="video" onclick="switchTab('video')">🎬 影片</button>
+    <button class="tab-btn" data-tab="music" onclick="switchTab('music')">🎵 音樂</button>
+    <button class="tab-btn" data-tab="ebook" onclick="switchTab('ebook')">📜 電子書</button>
+  </nav>
+</header>
+
+<main>
+  <div class="folder-banner">
+    <span class="folder-path" id="folder-label">📁 MYTUBE / MP4</span>
+    <span id="item-count">0 個項目</span>
+  </div>
+
+  <!-- 影片播放視窗 -->
+  <div id="video-stage">
+    <video id="main-video" controls playsinline></video>
+  </div>
+
+  <!-- 操作按鈕列（依分頁動態切換） -->
+  <div class="action-bar" id="action-bar"></div>
+
+  <!-- 隱藏的檔案選擇器 -->
+  <input type="file" id="file-input-video" accept="video/*,.mp4,.mov" multiple hidden onchange="handleMediaFiles(event, 'video')">
+  <input type="file" id="file-input-music" accept="audio/*,.mp3,.m4a,.wav" multiple hidden onchange="handleMediaFiles(event, 'music')">
+  <input type="file" id="file-input-ebook" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" multiple hidden onchange="handleEbookFiles(event)">
+
+  <!-- 項目清單 -->
+  <div class="media-list" id="media-list"></div>
+</main>
+
+<!-- 底部統一播放器（支援影片/音樂/電子書背景朗讀 + 0.5/1/2/3倍速） -->
+<div class="dock-player">
+  <div class="dock-top">
+    <div class="now-playing" id="now-playing-title">尚未播放任何媒體或書籍</div>
+    <div class="speed-group" title="播放 / 朗讀倍速">
+      <button class="speed-btn" data-rate="0.5" onclick="setPlaybackSpeed(0.5)">0.5x</button>
+      <button class="speed-btn active" data-rate="1" onclick="setPlaybackSpeed(1)">1x</button>
+      <button class="speed-btn" data-rate="2" onclick="setPlaybackSpeed(2)">2x</button>
+      <button class="speed-btn" data-rate="3" onclick="setPlaybackSpeed(3)">3x</button>
+    </div>
+  </div>
+  <div class="dock-controls">
+    <div class="ctrl-btns">
+      <button class="mini-btn" onclick="skipStep(-1)">⏮</button>
+      <button class="play-circle" id="master-play-btn" onclick="toggleMasterPlay()">▶</button>
+      <button class="mini-btn" onclick="skipStep(1)">⏭</button>
+    </div>
+    <div class="progress-wrap">
+      <span id="time-current">00:00</span>
+      <input type="range" id="seek-bar" min="0" max="100" value="0" oninput="handleSeek(this.value)">
+      <span id="time-total">00:00</span>
+    </div>
+  </div>
 </div>
+
+<!-- 貼上文字建立電子書彈窗 -->
+<div class="modal" id="paste-modal">
+  <div class="modal-card">
+    <h3 class="modal-title">✒️ 典藏手稿貼上電子書</h3>
+    <input type="text" id="paste-title" class="input-field" placeholder="輸入書名（例如：歐洲藝術史筆記）">
+    <textarea id="paste-content" class="textarea-field" placeholder="在此直接貼上文章、小說或筆記內容..."></textarea>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button class="mini-btn" onclick="closePasteModal()">取消</button>
+      <button class="primary-btn" style="flex:none; padding:10px 20px;" onclick="savePastedEbook()">存入 MYTUBE/EBOOK</button>
+    </div>
+  </div>
+</div>
+
+<!-- 歐洲中古世紀典藏閱讀器 -->
+<div id="ebook-reader" class="theme-obsidian font-song">
+  <div class="reader-header">
+    <button class="page-nav-btn" onclick="closeReader()">← 返回書庫</button>
+    <div class="reader-book-title" id="reader-title">書名</div>
+    <button class="page-nav-btn" style="color:var(--ornament);" onclick="startEbookTTSFromReader()">🎧 朗讀此書</button>
+  </div>
+
+  <div class="reader-toolbar">
+    <!-- 4款中古世紀/護眼閱讀模式 -->
+    <select class="tool-select" id="theme-select" onchange="changeReaderTheme(this.value)" title="閱讀主題">
+      <option value="theme-obsidian">🌑 黑曜金典 (深色護眼)</option>
+      <option value="theme-parchment">📜 中古羊皮紙 (手稿質感)</option>
+      <option value="theme-abbey">🍷 修道院燙金 (古典宮廷)</option>
+      <option value="theme-emerald">🌲 皇家墨綠書房 (舒緩護眼)</option>
+    </select>
+
+    <!-- 4款低調奢華字型 -->
+    <select class="tool-select" id="font-select" onchange="changeReaderFont(this.value)" title="奢華字型">
+      <option value="font-song">典藏宋體 (Noto Serif)</option>
+      <option value="font-kai">古典楷書 (手抄卷風)</option>
+      <option value="font-ming">皇家細明 (歐式襯線)</option>
+      <option value="font-sans">現代黑體 (極簡清晰)</option>
+    </select>
+
+    <!-- 翻頁模式 vs 捲動模式 -->
+    <select class="tool-select" id="mode-select" onchange="changeReaderMode(this.value)" title="翻閱方式">
+      <option value="page">📖 仿真書本翻頁</option>
+      <option value="scroll">📜 長卷軸連續閱讀</option>
+    </select>
+
+    <!-- 字體大小微調 -->
+    <div style="display:flex; gap:4px;">
+      <button class="page-nav-btn" style="padding:4px 8px;" onclick="adjustFontSize(-1)">A-</button>
+      <button class="page-nav-btn" style="padding:4px 8px;" onclick="adjustFontSize(1)">A+</button>
+    </div>
+  </div>
+
+  <div class="book-stage" id="book-stage" onclick="handleBookTap(event)">
+    <div class="book-leaf" id="book-leaf" style="font-size: 18px;">
+      <div class="medieval-ornament">~ ⚜️ ANNO DOMINI • LIBER ⚜️ ~</div>
+      <div id="book-content-area"></div>
+    </div>
+  </div>
+
+  <div class="reader-footer">
+    <button class="page-nav-btn" id="prev-page-btn" onclick="turnPage(-1)">◀ 上一頁</button>
+    <span id="page-indicator" style="font-size:12px; color:var(--ornament);">第 1 / 1 頁</span>
+    <button class="page-nav-btn" id="next-page-btn" onclick="turnPage(1)">下一頁 ▶</button>
+  </div>
+</div>
+
+<audio id="bg-audio" playsinline></audio>
 
 <script>
-// === 內建預設雲端下載引擎網址（免手動設定、介面不顯示） ===
-const CLOUD_ENGINE_URL = 'https://mytube-api-a73d.onrender.com';
-
-// === 1. 日夜自動主題切換 ===
-let themeMode = localStorage.getItem('mytube_theme_mode') || 'auto';
-
-function applyTheme() {
-  const btn = document.getElementById('themeToggleBtn');
-  let targetTheme = 'light';
-  if (themeMode === 'auto') {
-    const hour = new Date().getHours();
-    targetTheme = (hour >= 18 || hour < 6) ? 'dark' : 'light';
-    if (btn) btn.textContent = '🌓 自動';
-  } else if (themeMode === 'dark') {
-    targetTheme = 'dark';
-    if (btn) btn.textContent = '🌙 深色';
-  } else {
-    targetTheme = 'light';
-    if (btn) btn.textContent = '☀️ 淺色';
-  }
-  document.documentElement.setAttribute('data-theme', targetTheme);
-  const metaTheme = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (metaTheme) {
-    metaTheme.setAttribute('content', targetTheme === 'dark' ? 'black-translucent' : 'default');
-  }
-}
-
-function cycleTheme() {
-  const order = ['auto', 'light', 'dark'];
-  themeMode = order[(order.indexOf(themeMode) + 1) % order.length];
-  localStorage.setItem('mytube_theme_mode', themeMode);
-  applyTheme();
-}
-
-applyTheme();
-setInterval(() => { if (themeMode === 'auto') applyTheme(); }, 60000);
-
-async function requestPersistentStorage() {
-  if (navigator.storage && navigator.storage.persist) {
-    await navigator.storage.persist();
-  }
-}
-
-// === 2. 本機獨立儲存核心（每支手機完全獨立隔離） ===
-const DB_NAME = 'MyTubeOfflineDB_V2';
-const DB_VERSION = 1;
-const PIN_STORAGE_KEY = 'mytube_device_pin_v2';
-const META_STORAGE_KEY = 'mytube_device_meta_v2';
-let db = null;
-
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const database = e.target.result;
-      if (!database.objectStoreNames.contains('mediaFiles')) {
-        database.createObjectStore('mediaFiles', { keyPath: 'id' });
-      }
-      if (!database.objectStoreNames.contains('meta')) {
-        database.createObjectStore('meta', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
-    req.onerror = (e) => reject(e);
-  });
-}
-
-function dbGet(storeName, key) {
-  return new Promise((resolve) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => resolve(null);
-  });
-}
-
-function dbGetAll(storeName) {
-  return new Promise((resolve) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const req = tx.objectStore(storeName).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => resolve([]);
-  });
-}
-
-function dbPut(storeName, value) {
-  return new Promise((resolve) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    tx.objectStore(storeName).put(value);
-    tx.oncomplete = () => resolve();
-  });
-}
-
-// === 3. 雙重持久化密碼與個人獨立清單狀態 ===
-let currentTab = 'ALL';
-let selectedPlaylistId = null;
-let appMeta = {
-  pin: null,
-  saveCopyToPhoneFiles: false,
-  playlists: [
-    { id: 'pl_downloaded', name: '已下載的內容', icon: '⬇', fileIds: [] },
-    { id: 'pl_fav', name: '喜歡的音樂', icon: '👍', fileIds: [] },
-    { id: 'pl_later', name: '稍後觀看', icon: '🕒', fileIds: [] }
-  ],
-  history: []
-};
-let playQueue = [];
-let currentQueueIndex = -1;
-let currentPlayingId = null;
-
-async function saveMeta() {
-  if (appMeta.pin) {
-    localStorage.setItem(PIN_STORAGE_KEY, appMeta.pin);
-  }
-  localStorage.setItem(META_STORAGE_KEY, JSON.stringify(appMeta));
-  if (db) {
-    await dbPut('meta', { key: 'appMeta', data: appMeta });
-  }
-}
-
-async function loadSavedMeta() {
-  let dbMeta = null;
-  if (db) {
-    const saved = await dbGet('meta', 'appMeta');
-    if (saved && saved.data) dbMeta = saved.data;
-  }
-  let lsMeta = null;
-  try {
-    const raw = localStorage.getItem(META_STORAGE_KEY);
-    if (raw) lsMeta = JSON.parse(raw);
-  } catch (e) {}
-
-  const merged = { ...appMeta, ...(lsMeta || {}), ...(dbMeta || {}) };
-  const savedPin = (dbMeta && dbMeta.pin) || (lsMeta && lsMeta.pin) || localStorage.getItem(PIN_STORAGE_KEY);
-  if (savedPin && /^\d{4}$/.test(savedPin)) {
-    merged.pin = savedPin;
-  }
-  appMeta = merged;
-  await saveMeta();
-}
-
-async function setupAuth() {
-  await loadSavedMeta();
-
-  const titleEl = document.getElementById('lockTitle');
-  const descEl = document.getElementById('lockDesc');
-  const pinInput = document.getElementById('pinInput');
-  const confirmEl = document.getElementById('pinConfirm');
-  const btnEl = document.getElementById('pinSubmitBtn');
-  const msgEl = document.getElementById('lockMsg');
-  const resetBtn = document.getElementById('resetPinBtn');
-
-  pinInput.value = '';
-  confirmEl.value = '';
-  msgEl.textContent = '';
-
-  if (!appMeta.pin) {
-    titleEl.textContent = '首次使用 · 設定密碼';
-    descEl.textContent = '請為此裝置設定 4 碼數字密碼（設定後永久記住）';
-    confirmEl.style.display = 'block';
-    resetBtn.style.display = 'none';
-    btnEl.textContent = '儲存密碼並進入';
-
-    btnEl.onclick = async () => {
-      const p1 = pinInput.value.trim();
-      const p2 = confirmEl.value.trim();
-      if (!/^\d{4}$/.test(p1)) { msgEl.textContent = '請輸入 4 位純數字'; return; }
-      if (p1 !== p2) { msgEl.textContent = '兩次輸入的密碼不一致'; return; }
-      appMeta.pin = p1;
-      await saveMeta();
-      unlockApp();
-    };
-  } else {
-    titleEl.textContent = 'MyTube 私人空間';
-    descEl.textContent = '請輸入您的 4 碼數字密碼解鎖';
-    confirmEl.style.display = 'none';
-    resetBtn.style.display = 'inline-block';
-    btnEl.textContent = '解鎖進入';
-
-    const verifyPin = () => {
-      const p = pinInput.value.trim();
-      if (p === appMeta.pin) {
-        unlockApp();
-      } else {
-        msgEl.textContent = '❌ 密碼錯誤，請再試一次';
-        pinInput.value = '';
-      }
-    };
-
-    btnEl.onclick = verifyPin;
-    pinInput.oninput = () => {
-      if (pinInput.value.trim().length === 4) {
-        verifyPin();
-      }
-    };
-  }
-}
-
-async function forgotOrResetPin() {
-  if (!confirm('確定要重設此裝置的 4 碼登入密碼嗎？（已下載的歌曲與播放清單會完整保留）')) return;
-  appMeta.pin = null;
-  localStorage.removeItem(PIN_STORAGE_KEY);
-  await saveMeta();
-  await setupAuth();
-}
-
-function unlockApp() {
-  document.getElementById('pinInput').value = '';
-  document.getElementById('lockMsg').textContent = '';
-  document.getElementById('lockScreen').style.display = 'none';
-  renderCurrentView();
-}
-
-function lockApp() {
-  setupAuth();
-  document.getElementById('lockScreen').style.display = 'flex';
-}
-
-// === 4. 自動寫入本機資料庫與個人獨立清單 ===
-async function storeMediaBlob(title, fmt, blob) {
-  const isMp4 = fmt.toUpperCase() === 'MP4';
-  const ext = isMp4 ? '.mp4' : '.m4a';
-  const fileRecord = {
-    id: 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-    name: title,
-    fullName: title + ext,
-    type: isMp4 ? 'MP4' : 'MP3',
-    mime: blob.type || (isMp4 ? 'video/mp4' : 'audio/mp4'),
-    blob: blob,
-    addedAt: new Date().toLocaleDateString('zh-TW')
-  };
-  await dbPut('mediaFiles', fileRecord);
-  if (!appMeta.playlists[0].fileIds.includes(fileRecord.id)) {
-    appMeta.playlists[0].fileIds.unshift(fileRecord.id);
-  }
-  await saveMeta();
-  return fileRecord;
-}
-
-async function handleFileImport(event) {
-  const files = Array.from(event.target.files);
-  if (!files.length) return;
-  for (const file of files) {
-    const isMp4 = file.name.toLowerCase().endsWith('.mp4') || file.type.includes('video');
-    const cleanName = file.name.replace(/\.[^/.]+$/, "");
-    await storeMediaBlob(cleanName, isMp4 ? 'MP4' : 'MP3', file);
-  }
-  event.target.value = '';
-  renderCurrentView();
-}
-
-// === 5. 音訊背景連播與鎖屏控制 ===
-const audioPlayer = document.getElementById('bgAudioPlayer');
-
-function formatSec(sec) {
-  if (!isFinite(sec)) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
-audioPlayer.addEventListener('timeupdate', () => {
-  const bar = document.getElementById('miniProgressBar');
-  const timeText = document.getElementById('nowPlayingTime');
-  if (audioPlayer.duration) {
-    const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-    bar.style.width = `${pct}%`;
-    timeText.textContent = `${formatSec(audioPlayer.currentTime)} / ${formatSec(audioPlayer.duration)} · 背景播放`;
-  }
-});
-
-audioPlayer.addEventListener('play', () => {
-  document.getElementById('playPauseBtn').textContent = '⏸';
-});
-
-audioPlayer.addEventListener('pause', () => {
-  document.getElementById('playPauseBtn').textContent = '▶';
-});
-
-audioPlayer.addEventListener('ended', () => playNextInQueue());
-
-function togglePlayPause() {
-  if (audioPlayer.paused) { audioPlayer.play(); } else { audioPlayer.pause(); }
-}
-
-function seekAudio(e) {
-  if (!audioPlayer.duration) return;
-  const rect = e.currentTarget.getBoundingClientRect();
-  const ratio = (e.clientX - rect.left) / rect.width;
-  audioPlayer.currentTime = ratio * audioPlayer.duration;
-}
-
-async function playFileById(fileId, queueIds = null) {
-  const record = await dbGet('mediaFiles', fileId);
-  if (!record) return;
-
-  currentPlayingId = fileId;
-  if (queueIds) {
-    playQueue = queueIds;
-    currentQueueIndex = queueIds.indexOf(fileId);
+  // 初始化 PDF.js Worker
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
-  const blobUrl = URL.createObjectURL(record.blob);
-  const miniPlayer = document.getElementById('miniPlayer');
-  miniPlayer.style.display = 'block';
-  document.getElementById('nowPlayingTitle').textContent = record.name;
+  // ==========================================
+  // IndexedDB 離線永久資料庫 (MYTUBE_DB)
+  // ==========================================
+  const DB_NAME = 'MyTube_Vault_DB';
+  const DB_VERSION = 2;
+  let db;
 
-  audioPlayer.src = blobUrl;
-  audioPlayer.play();
-
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: record.name,
-      artist: 'MyTube 離線音樂庫',
-      album: 'MP3 背景播放'
-    });
-    navigator.mediaSession.setActionHandler('play', () => audioPlayer.play());
-    navigator.mediaSession.setActionHandler('pause', () => audioPlayer.pause());
-    navigator.mediaSession.setActionHandler('nexttrack', () => playNextInQueue());
-    navigator.mediaSession.setActionHandler('previoustrack', () => playPrevInQueue());
-  }
-  renderCurrentView();
-}
-
-function playNextInQueue() {
-  if (!playQueue.length) return;
-  currentQueueIndex = (currentQueueIndex + 1) % playQueue.length;
-  playFileById(playQueue[currentQueueIndex]);
-}
-
-function playPrevInQueue() {
-  if (!playQueue.length) return;
-  currentQueueIndex = (currentQueueIndex - 1 + playQueue.length) % playQueue.length;
-  playFileById(playQueue[currentQueueIndex]);
-}
-
-// === 6. 分頁渲染 ===
-function switchTab(tab) {
-  currentTab = tab;
-  selectedPlaylistId = null;
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === tab);
-  });
-  renderCurrentView();
-}
-
-async function renderCurrentView() {
-  const container = document.getElementById('mainContent');
-  const allFiles = await dbGetAll('mediaFiles');
-
-  if (currentTab === 'MP3') {
-    const mp3List = allFiles.filter(f => f.type === 'MP3').reverse();
-    const queueIds = mp3List.map(f => f.id);
-
-    let html = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <div>
-          <div style="font-size:20px; font-weight:800;">所有歌曲</div>
-          <div style="font-size:12px; color:var(--sub); margin-top:2px;">共 ${mp3List.length} 首本機專屬 MP3（關機不遺失）</div>
-        </div>
-        <div style="display:flex; gap:6px;">
-          ${mp3List.length ? `<button class="pill-btn pill-primary pill-sm" onclick="playFileById('${mp3List[0].id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">全部播放</button>` : ''}
-          <button class="pill-btn pill-ghost pill-sm" onclick="document.getElementById('filePicker').click()">+ 本機</button>
-        </div>
-      </div>
-    `;
-
-    if (!mp3List.length) {
-      html += `<div style="text-align:center; padding:45px 10px; color:var(--sub); font-size:14px;">
-        目前還沒有 MP3 歌曲<br><br>點上方「下載」分頁抓取後，歌曲會直接自動出現在這裡！
-      </div>`;
-    } else {
-      for (const song of mp3List) {
-        const isPlaying = currentPlayingId === song.id;
-        html += `
-        <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${song.id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">
-          <div class="song-left">
-            <div class="mp3-black-box">MP3</div>
-            <div class="song-info">
-              <div class="song-title">${song.name}</div>
-              <div class="song-meta">此裝置專屬庫 · ${song.addedAt}</div>
-            </div>
-          </div>
-          <button class="song-more-btn" onclick="event.stopPropagation(); promptAddToPlaylist('${song.id}')">⋮</button>
-        </div>`;
-      }
-    }
-    container.innerHTML = html;
-  }
-
-  else if (currentTab === 'ALL' || currentTab === 'MP4') {
-    const filtered = allFiles.filter(f => currentTab === 'ALL' || f.type === currentTab).reverse();
-    const mp3Queue = filtered.filter(f => f.type === 'MP3').map(f => f.id);
-
-    let html = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <span style="font-size:13px; color:var(--sub);">共 ${filtered.length} 個本機專屬檔案</span>
-        <button class="pill-btn pill-ghost pill-sm" onclick="document.getElementById('filePicker').click()">+ 讀取本機檔案</button>
-      </div>
-    `;
-
-    if (!filtered.length) {
-      html += `<div style="text-align:center; padding:40px 10px; color:var(--sub); font-size:14px;">
-        尚未儲存任何 ${currentTab === 'ALL' ? 'MP4 或 MP3' : currentTab} 檔案<br><br>
-        至「下載」分頁貼上連結，下載完會自動歸類到此頁面
-      </div>`;
-    } else {
-      for (const item of filtered) {
-        if (item.type === 'MP4') {
-          const videoUrl = URL.createObjectURL(item.blob);
-          html += `
-          <div class="media-card">
-            <div class="media-thumb"><video src="${videoUrl}" controls playsinline preload="metadata"></video><span class="type-tag tag-mp4">MP4</span></div>
-            <div class="media-row">
-              <div>
-                <div class="media-title">${item.name}</div>
-                <div class="media-sub">MP4 影片 · ${item.addedAt}</div>
-              </div>
-              <button class="pill-btn pill-ghost pill-sm" onclick="promptAddToPlaylist('${item.id}')">➕ 清單</button>
-            </div>
-          </div>`;
-        } else {
-          const isPlaying = currentPlayingId === item.id;
-          html += `
-          <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${item.id}', ${JSON.stringify(mp3Queue).replace(/"/g, '&quot;')})">
-            <div class="song-left">
-              <div class="mp3-black-box">MP3</div>
-              <div class="song-info">
-                <div class="song-title">${item.name}</div>
-                <div class="song-meta">MP3 音訊 · ${item.addedAt}</div>
-              </div>
-            </div>
-            <button class="song-more-btn" onclick="event.stopPropagation(); promptAddToPlaylist('${item.id}')">⋮</button>
-          </div>`;
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const database = e.target.result;
+        if (!database.objectStoreNames.contains('items')) {
+          const store = database.createObjectStore('items', { keyPath: 'id' });
+          store.createIndex('category', 'category', { unique: false });
         }
-      }
-    }
-    container.innerHTML = html;
+      };
+      req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      req.onerror = (e) => reject(e);
+    });
   }
 
-  else if (currentTab === 'PLAYLIST') {
-    if (selectedPlaylistId) {
-      const pl = appMeta.playlists.find(p => p.id === selectedPlaylistId);
-      const plFiles = pl.fileIds.map(id => allFiles.find(f => f.id === id)).filter(Boolean);
-      const qIds = plFiles.filter(f => f.type === 'MP3').map(f => f.id);
+  function dbPut(item) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('items', 'readwrite');
+      tx.objectStore('items').put(item);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
 
-      let html = `
-        <button class="pill-btn pill-ghost pill-sm" onclick="selectedPlaylistId=null; renderCurrentView();" style="margin-bottom:12px;">← 返回播放清單</button>
-        <h2 style="margin:0 0 4px 0; font-size:20px;">${pl.icon} ${pl.name}</h2>
-        <div style="font-size:12px; color:var(--sub); margin-bottom:14px;">此裝置私人清單 · ${plFiles.length} 個項目</div>
-        <div style="display:flex; gap:8px; margin-bottom:16px;">
-          ${qIds.length ? `<button class="pill-btn pill-primary pill-sm" onclick="playFileById('${qIds[0]}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})">▶ 全部播放</button>` : ''}
-          <button class="pill-btn pill-ghost pill-sm" onclick="openBatchSelectForPlaylist('${pl.id}')">✏️ 勾選歌曲</button>
-        </div>
+  function dbGetByCategory(category) {
+    return new Promise((resolve) => {
+      const tx = db.transaction('items', 'readonly');
+      const idx = tx.objectStore('items').index('category');
+      const req = idx.getAll(category);
+      req.onsuccess = () => resolve(req.result || []);
+    });
+  }
+
+  function dbGetAll() {
+    return new Promise((resolve) => {
+      const tx = db.transaction('items', 'readonly');
+      const req = tx.objectStore('items').getAll();
+      req.onsuccess = () => resolve(req.result || []);
+    });
+  }
+
+  function dbDelete(id) {
+    return new Promise((resolve) => {
+      const tx = db.transaction('items', 'readwrite');
+      tx.objectStore('items').delete(id);
+      tx.oncomplete = () => resolve();
+    });
+  }
+
+  // ==========================================
+  // 狀態管理
+  // ==========================================
+  let currentTab = 'video'; // 'video' | 'music' | 'ebook'
+  let playbackSpeed = 1;
+  let activeMedia = null; // { type: 'video'|'music'|'ebook', item: Object }
+  let isPlaying = false;
+
+  // 電子書閱讀與朗讀狀態
+  let currentBook = null;
+  let bookPages = [];
+  let currentPageIndex = 0;
+  let readerMode = 'page'; // 'page' | 'scroll'
+  let readerFontSize = 18;
+  let ttsSentences = [];
+  let ttsIndex = 0;
+  let ttsActive = false;
+
+  const videoEl = document.getElementById('main-video');
+  const audioEl = document.getElementById('bg-audio');
+
+  // 切換橫幅分頁
+  async function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    const folderMap = {
+      video: '📁 MYTUBE / MP4（影片庫）',
+      music: '📁 MYTUBE / MP3（音樂庫）',
+      ebook: '📁 MYTUBE / EBOOK（典藏書閣）'
+    };
+    document.getElementById('folder-label').textContent = folderMap[tab];
+
+    const actionBar = document.getElementById('action-bar');
+    if (tab === 'video') {
+      actionBar.innerHTML = `<button class="primary-btn" onclick="document.getElementById('file-input-video').click()">＋ 匯入手機影片 (MP4)</button>`;
+    } else if (tab === 'music') {
+      actionBar.innerHTML = `<button class="primary-btn" onclick="document.getElementById('file-input-music').click()">＋ 匯入手機音樂 (MP3)</button>`;
+    } else {
+      actionBar.innerHTML = `
+        <button class="primary-btn" onclick="document.getElementById('file-input-ebook').click()">📄 匯入 PDF / Word / TXT</button>
+        <button class="secondary-btn" onclick="openPasteModal()">✒️ 貼上文字建書</button>
       `;
+    }
 
-      if (!plFiles.length) {
-        html += `<p style="color:var(--sub); font-size:13px;">清單目前是空的，點擊「勾選歌曲」從已下載的歌曲加入。</p>`;
-      } else {
-        plFiles.forEach((f) => {
-          const isPlaying = currentPlayingId === f.id;
-          html += `
-          <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${f.id}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})">
-            <div class="song-left">
-              <div class="mp3-black-box">${f.type}</div>
-              <div class="song-info">
-                <div class="song-title">${f.name}</div>
-                <div class="song-meta">${f.type} · 點擊播放</div>
-              </div>
-            </div>
-            <span style="color:var(--sub); padding:0 8px;">▶</span>
-          </div>`;
-        });
-      }
-      container.innerHTML = html;
+    await renderList();
+  }
+
+  // 渲染清單
+  async function renderList() {
+    const items = await dbGetByCategory(currentTab);
+    items.sort((a, b) => b.createdAt - a.createdAt);
+    document.getElementById('item-count').textContent = `${items.length} 個項目`;
+
+    const listEl = document.getElementById('media-list');
+    if (items.length === 0) {
+      const emptyTips = {
+        video: '尚無影片，點擊上方按鈕從手機相簿或檔案匯入 MP4。',
+        music: '尚無音樂，點擊上方按鈕匯入 MP3 支援背景播放。',
+        ebook: '書閣尚無藏書，可匯入手機裡的 PDF、Word (.docx) 或直接貼上文字。'
+      };
+      listEl.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted); font-size:14px; border:1px dashed var(--border-subtle); border-radius:12px;">${emptyTips[currentTab]}</div>`;
       return;
     }
 
-    let html = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-        <div style="font-size:20px; font-weight:800;">媒體庫 · 個人播放清單</div>
-        <button class="pill-btn pill-primary pill-sm" onclick="createNewPlaylist()">➕ 新增清單</button>
-      </div>
-    `;
-
-    for (const pl of appMeta.playlists) {
-      const validCount = pl.fileIds.filter(id => allFiles.some(f => f.id === id)).length;
-      html += `
-      <div class="pl-item" onclick="selectedPlaylistId='${pl.id}'; renderCurrentView();">
-        <div class="pl-left">
-          <div class="pl-cover">
-            <span>${pl.icon}</span>
-            <span class="pl-count">≡ ${validCount}</span>
+    listEl.innerHTML = items.map(item => {
+      const isCurrent = activeMedia && activeMedia.item.id === item.id;
+      const dateStr = new Date(item.createdAt).toLocaleDateString('zh-TW');
+      if (currentTab === 'ebook') {
+        const charCount = (item.text || '').length;
+        return `
+          <div class="media-card ${isCurrent ? 'playing' : ''}">
+            <div class="media-info" onclick="openBookReader('${item.id}')">
+              <div class="media-title">📖 ${escapeHtml(item.title)}</div>
+              <div class="media-meta">
+                <span class="badge">${item.format || 'EBOOK'}</span>
+                <span>約 ${charCount.toLocaleString()} 字</span>
+                <span>${dateStr}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="mini-btn gold" onclick="openBookReader('${item.id}')">閱讀</button>
+              <button class="mini-btn gold" onclick="playEbookBackground('${item.id}')">🎧 朗讀</button>
+              <button class="mini-btn" onclick="downloadSingleToDevice('${item.id}')" title="存檔至手機 MYTUBE 資料夾">💾</button>
+              <button class="mini-btn del" onclick="deleteItem('${item.id}')">✕</button>
+            </div>
           </div>
-          <div style="overflow:hidden;">
-            <div style="font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${pl.name}</div>
-            <div style="font-size:12px; color:var(--sub); margin-top:3px;">此裝置私人清單 · ${validCount} 個項目</div>
+        `;
+      } else {
+        const sizeMB = item.blob ? (item.blob.size / (1024 * 1024)).toFixed(1) + ' MB' : '';
+        return `
+          <div class="media-card ${isCurrent ? 'playing' : ''}">
+            <div class="media-info" onclick="playAvItem('${item.id}')">
+              <div class="media-title">${currentTab === 'video' ? '🎬' : '🎵'} ${escapeHtml(item.title)}</div>
+              <div class="media-meta">
+                <span class="badge">${currentTab === 'video' ? 'MP4' : 'MP3'}</span>
+                <span>${sizeMB}</span>
+                <span>${dateStr}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="mini-btn gold" onclick="playAvItem('${item.id}')">播放</button>
+              <button class="mini-btn del" onclick="deleteItem('${item.id}')">✕</button>
+            </div>
           </div>
-        </div>
-        <span style="color:var(--sub); font-size:18px; padding-left:8px;">⋮</span>
-      </div>`;
-    }
-    container.innerHTML = html;
+        `;
+      }
+    }).join('');
   }
 
-  else if (currentTab === 'DOWNLOAD') {
-    let histHtml = '';
-    if (!appMeta.history.length) {
-      histHtml = '<div style="color:var(--sub); font-size:13px;">尚無下載紀錄</div>';
-    } else {
-      for (const h of [...appMeta.history].reverse()) {
-        const bg = h.format === 'MP4' ? '#0f0f0f' : '#b83318';
-        histHtml += `
-        <div class="hist-card">
-          <div style="overflow:hidden; padding-right:10px;">
-            <div style="font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.title}</div>
-            <div style="font-size:11px; color:var(--sub); margin-top:3px;">${h.time}</div>
-          </div>
-          <span style="background:${bg}; color:#fff; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; flex-shrink:0;">${h.format}</span>
-        </div>`;
+  // ==========================================
+  // 匯入影片 / 音樂
+  // ==========================================
+  async function handleMediaFiles(event, type) {
+    const files = Array.from(event.target.files);
+    for (const file of files) {
+      const item = {
+        id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        category: type,
+        folder: type === 'video' ? 'MYTUBE/MP4' : 'MYTUBE/MP3',
+        title: file.name,
+        blob: file,
+        createdAt: Date.now()
+      };
+      await dbPut(item);
+    }
+    event.target.value = '';
+    await renderList();
+  }
+
+  // ==========================================
+  // 匯入 PDF / Word (.docx) / TXT 電子書
+  // ==========================================
+  async function handleEbookFiles(event) {
+    const files = Array.from(event.target.files);
+    for (const file of files) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      let extractedText = '';
+      let formatLabel = ext.toUpperCase();
+
+      try {
+        if (ext === 'pdf') {
+          extractedText = await extractTextFromPDF(file);
+        } else if (ext === 'docx') {
+          extractedText = await extractTextFromDocx(file);
+          formatLabel = 'WORD';
+        } else {
+          extractedText = await file.text();
+          formatLabel = 'TXT';
+        }
+
+        if (!extractedText.trim()) {
+          alert(`「${file.name}」無法萃取出文字（可能是純圖片掃描版 PDF）。`);
+          continue;
+        }
+
+        const item = {
+          id: 'book_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+          category: 'ebook',
+          folder: 'MYTUBE/EBOOK',
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          format: formatLabel,
+          text: extractedText.trim(),
+          lastPage: 0,
+          createdAt: Date.now()
+        };
+        await dbPut(item);
+        // 自動提示是否同步存一份實體檔進手機 MYTUBE/EBOOK 資料夾
+        saveBlobToPhoneFolder(new Blob([item.text], { type: 'text/plain;charset=utf-8' }), `${item.title}.txt`);
+      } catch (err) {
+        console.error(err);
+        alert(`解析「${file.name}」時發生錯誤：${err.message}`);
       }
     }
-
-    container.innerHTML = `
-      <div class="dl-header">
-        <div class="avatar-circle">Y</div>
-        <div>
-          <div style="font-size:20px; font-weight:800;">YouTube 直抓下載器</div>
-          <div style="font-size:12px; color:var(--sub);">貼上連結即可自動存入本機 MP3 / MP4 分頁</div>
-        </div>
-      </div>
-
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px;">
-        <select id="dlFormat" style="border-radius:999px; border:1px solid var(--border); padding:6px 14px; font-size:13px; font-weight:600; background:var(--bg-elevated); color:var(--text);">
-          <option value="MP3">MP3 / M4A (純音訊)</option>
-          <option value="MP4">MP4 (高畫質影片)</option>
-        </select>
-        <label style="font-size:12px; color:var(--sub); display:flex; align-items:center; gap:5px; cursor:pointer;">
-          <input type="checkbox" id="saveFileCopyChk" ${appMeta.saveCopyToPhoneFiles ? 'checked' : ''} onchange="toggleSaveFileCopy(this.checked)" />
-          同時另存至 iPhone 檔案 App
-        </label>
-      </div>
-
-      <textarea id="dlUrls" class="url-box" placeholder="在此貼上 1 個或多個 YouTube 網址（用空白鍵或換行隔開）..."></textarea>
-
-      <div style="display:flex; gap:10px; margin:12px 0 16px 0;">
-        <button id="startDlBtn" class="pill-btn pill-primary" style="flex:1;" onclick="processCloudBatchDownload()">開始下載</button>
-        <button class="pill-btn pill-ghost" style="flex:1;" onclick="document.getElementById('dlUrls').value=''">清空網址</button>
-      </div>
-
-      <div id="dlStatus" style="font-size:13px; color:var(--text); margin-bottom:14px; line-height:1.5;"></div>
-
-      <div style="font-size:18px; font-weight:800; margin:14px 0 10px 0;">下載紀錄 <span style="font-weight:400; color:var(--sub);">&gt;</span></div>
-      ${histHtml}
-    `;
-  }
-}
-
-async function toggleSaveFileCopy(checked) {
-  appMeta.saveCopyToPhoneFiles = checked;
-  await saveMeta();
-}
-
-function triggerBrowserFileDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 1500);
-}
-
-async function processCloudBatchDownload() {
-  const raw = document.getElementById('dlUrls').value.trim();
-  const fmt = document.getElementById('dlFormat').value;
-  const statusEl = document.getElementById('dlStatus');
-  const btnEl = document.getElementById('startDlBtn');
-  const urls = raw.split(/[\s,，]+/).filter(Boolean);
-
-  if (!urls.length) {
-    statusEl.textContent = '⚠️ 請先貼上至少一個 YouTube 網址';
-    return;
+    event.target.value = '';
+    await renderList();
   }
 
-  btnEl.disabled = true;
-  btnEl.textContent = '⏳ 下載並寫入手機中...';
-  let successCount = 0;
+  async function extractTextFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      const strings = content.items.map(item => item.str);
+      fullText += strings.join(' ') + '
 
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    statusEl.innerHTML = `⏳ 正在處理第 <b>${i + 1} / ${urls.length}</b> 首...<br><span style="color:var(--sub); font-size:12px;">（若引擎剛從休眠喚醒，首首約需等待 40～50 秒）</span>`;
+';
+    }
+    return fullText;
+  }
+
+  async function extractTextFromDocx(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  }
+
+  // 貼上文字建書
+  function openPasteModal() {
+    document.getElementById('paste-title').value = '';
+    document.getElementById('paste-content').value = '';
+    document.getElementById('paste-modal').classList.add('open');
+  }
+  function closePasteModal() {
+    document.getElementById('paste-modal').classList.remove('open');
+  }
+  async function savePastedEbook() {
+    const title = document.getElementById('paste-title').value.trim() || '未命名手稿_' + new Date().toLocaleDateString();
+    const text = document.getElementById('paste-content').value.trim();
+    if (!text) { alert('請先貼上文字內容'); return; }
+
+    const item = {
+      id: 'book_' + Date.now(),
+      category: 'ebook',
+      folder: 'MYTUBE/EBOOK',
+      title,
+      format: '手稿',
+      text,
+      lastPage: 0,
+      createdAt: Date.now()
+    };
+    await dbPut(item);
+    closePasteModal();
+    await renderList();
+    // 同時匯出一份實體文字檔供存入手機 MYTUBE 資料夾
+    saveBlobToPhoneFolder(new Blob([text], { type: 'text/plain;charset=utf-8' }), `${title}.txt`);
+  }
+
+  // 存檔至手機本機資料夾（支援 File System Access API 或手機標準下載至 MYTUBE 資料夾）
+  async function saveBlobToPhoneFolder(blob, filename) {
     try {
-      const resp = await fetch(`${CLOUD_ENGINE_URL}/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url, format: fmt })
-      });
-
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        throw new Error(errData.detail || `伺服器錯誤 (${resp.status})`);
+      if ('showSaveFilePicker' in window) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: 'MyTube Ebook File', accept: { 'text/plain': ['.txt'] } }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return;
       }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+    // iPhone Safari / Android 通用下載觸發（可於「檔案」App 移入 MYTUBE/EBOOK）
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
-      const rawTitle = resp.headers.get('X-Media-Title');
-      const title = rawTitle ? decodeURIComponent(rawTitle) : `YouTube_${fmt}_${Date.now()}`;
-      const blob = await resp.blob();
+  async function downloadSingleToDevice(id) {
+    const all = await dbGetAll();
+    const item = all.find(x => x.id === id);
+    if (!item) return;
+    const blob = item.blob || new Blob([item.text], { type: 'text/plain;charset=utf-8' });
+    const ext = item.blob ? '' : '.txt';
+    saveBlobToPhoneFolder(blob, item.title + ext);
+  }
 
-      const savedRec = await storeMediaBlob(title, fmt, blob);
+  async function exportToMyTubeFolder() {
+    const all = await dbGetAll();
+    const ebooks = all.filter(x => x.category === 'ebook');
+    if (ebooks.length === 0) {
+      alert('目前電子書庫沒有檔案可匯出。你也可以在每本電子書右側點擊 💾 單獨存檔至手機 MYTUBE 資料夾。');
+      return;
+    }
+    const merged = ebooks.map(b => `=== 【${b.title}】 ===
 
-      if (appMeta.saveCopyToPhoneFiles) {
-        triggerBrowserFileDownload(blob, savedRec.fullName);
+${b.text}`).join('
+
+====================
+
+');
+    saveBlobToPhoneFolder(new Blob([merged], { type: 'text/plain;charset=utf-8' }), `MYTUBE_EBOOK_典藏合輯_${Date.now()}.txt`);
+  }
+
+  async function deleteItem(id) {
+    if (!confirm('確定要刪除此項目嗎？')) return;
+    await dbDelete(id);
+    if (activeMedia && activeMedia.item.id === id) stopAllPlayback();
+    await renderList();
+  }
+
+  // ==========================================
+  // 統一播放器引擎（影片 / 音樂 / 電子書背景朗讀 + 0.5/1/2/3倍速）
+  // ==========================================
+  function stopAllPlayback() {
+    videoEl.pause();
+    audioEl.pause();
+    window.speechSynthesis.cancel();
+    ttsActive = false;
+    isPlaying = false;
+    document.getElementById('video-stage').style.display = 'none';
+    document.getElementById('master-play-btn').textContent = '▶';
+  }
+
+  async function playAvItem(id) {
+    const all = await dbGetAll();
+    const item = all.find(x => x.id === id);
+    if (!item || !item.blob) return;
+
+    stopAllPlayback();
+    activeMedia = { type: item.category, item };
+    const url = URL.createObjectURL(item.blob);
+
+    document.getElementById('now-playing-title').textContent = `${item.category === 'video' ? '🎬' : '🎵'} ${item.title}`;
+
+    if (item.category === 'video') {
+      document.getElementById('video-stage').style.display = 'block';
+      videoEl.src = url;
+      videoEl.playbackRate = playbackSpeed;
+      videoEl.play();
+    } else {
+      audioEl.src = url;
+      audioEl.playbackRate = playbackSpeed;
+      audioEl.play();
+    }
+    isPlaying = true;
+    document.getElementById('master-play-btn').textContent = '⏸';
+    setupMediaSession(item.title, item.category === 'video' ? 'MYTUBE 影片' : 'MYTUBE 音樂');
+    renderList();
+  }
+
+  // 啟動電子書背景朗讀（像影片一樣背景播放把文字朗讀出來）
+  async function playEbookBackground(id) {
+    const all = await dbGetAll();
+    const item = all.find(x => x.id === id);
+    if (!item || !item.text) return;
+
+    stopAllPlayback();
+    activeMedia = { type: 'ebook', item };
+    document.getElementById('now-playing-title').textContent = `🎧 朗讀中：${item.title}`;
+
+    // 依標點符號切分句子，確保手機鎖屏或背景切換時穩定逐句朗讀與倍速切換
+    ttsSentences = item.text
+      .replace(/([。！？；.!?
+]+)/g, '$1|')
+      .split('|')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    ttsIndex = 0;
+    ttsActive = true;
+    isPlaying = true;
+    document.getElementById('master-play-btn').textContent = '⏸';
+    setupMediaSession(item.title, 'MYTUBE 典藏有聲書');
+    speakNextSentence();
+    renderList();
+  }
+
+  function startEbookTTSFromReader() {
+    if (!currentBook) return;
+    playEbookBackground(currentBook.id);
+  }
+
+  function speakNextSentence() {
+    if (!ttsActive || ttsIndex >= ttsSentences.length) {
+      if (ttsIndex >= ttsSentences.length) {
+        ttsActive = false;
+        isPlaying = false;
+        document.getElementById('master-play-btn').textContent = '▶';
       }
+      return;
+    }
 
-      appMeta.history.push({
-        title: title,
-        format: fmt,
-        time: new Date().toLocaleString('zh-TW', { hour12: false })
-      });
-      await saveMeta();
-      successCount++;
-    } catch (err) {
-      statusEl.innerHTML += `<br><span style="color:#ff3b30;">❌ 第 ${i + 1} 個失敗：${err.message}</span>`;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(ttsSentences[ttsIndex]);
+    // 自動偵測中英文語音
+    const hasChinese = /[一-龥]/.test(ttsSentences[ttsIndex]);
+    utterance.lang = hasChinese ? 'zh-TW' : 'en-US';
+    utterance.rate = playbackSpeed; // 套用 0.5x / 1x / 2x / 3x
+
+    // 更新進度條
+    document.getElementById('seek-bar').value = Math.round((ttsIndex / ttsSentences.length) * 100);
+    document.getElementById('time-current').textContent = `${ttsIndex + 1}句`;
+    document.getElementById('time-total').textContent = `${ttsSentences.length}句`;
+
+    utterance.onend = () => {
+      if (ttsActive && isPlaying) {
+        ttsIndex++;
+        speakNextSentence();
+      }
+    };
+    utterance.onerror = () => {
+      if (ttsActive && isPlaying) {
+        ttsIndex++;
+        speakNextSentence();
+      }
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // 倍速切換：0.5 / 1 / 2 / 3
+  function setPlaybackSpeed(rate) {
+    playbackSpeed = rate;
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+      btn.classList.toggle('active', parseFloat(btn.dataset.rate) === rate);
+    });
+
+    if (!activeMedia) return;
+    if (activeMedia.type === 'video') {
+      videoEl.playbackRate = rate;
+    } else if (activeMedia.type === 'music') {
+      audioEl.playbackRate = rate;
+    } else if (activeMedia.type === 'ebook' && ttsActive && isPlaying) {
+      // 朗讀中即時套用新倍速重念當前句
+      speakNextSentence();
     }
   }
 
-  btnEl.disabled = false;
-  btnEl.textContent = '開始下載';
-
-  if (successCount > 0) {
-    document.getElementById('dlUrls').value = '';
-    statusEl.innerHTML = `🎉 成功下載 <b>${successCount}</b> 個檔案並已存入本機離線庫！<br>👉 直接點上方 <b>「${fmt}」</b> 分頁即可開始背景播放！`;
-    setTimeout(() => renderCurrentView(), 1200);
+  function toggleMasterPlay() {
+    if (!activeMedia) return;
+    if (activeMedia.type === 'video') {
+      if (videoEl.paused) { videoEl.play(); isPlaying = true; }
+      else { videoEl.pause(); isPlaying = false; }
+    } else if (activeMedia.type === 'music') {
+      if (audioEl.paused) { audioEl.play(); isPlaying = true; }
+      else { audioEl.pause(); isPlaying = false; }
+    } else if (activeMedia.type === 'ebook') {
+      if (isPlaying) {
+        isPlaying = false;
+        window.speechSynthesis.cancel();
+      } else {
+        isPlaying = true;
+        ttsActive = true;
+        speakNextSentence();
+      }
+    }
+    document.getElementById('master-play-btn').textContent = isPlaying ? '⏸' : '▶';
   }
-}
 
-async function createNewPlaylist() {
-  const name = prompt('請輸入新播放清單名稱（例如：開車音樂、運動歌單）：');
-  if (!name || !name.trim()) return;
-  appMeta.playlists.push({
-    id: 'pl_' + Date.now(),
-    name: name.trim(),
-    icon: '🎵',
-    fileIds: []
+  function skipStep(dir) {
+    if (!activeMedia) return;
+    if (activeMedia.type === 'video') {
+      videoEl.currentTime = Math.max(0, videoEl.currentTime + dir * 15);
+    } else if (activeMedia.type === 'music') {
+      audioEl.currentTime = Math.max(0, audioEl.currentTime + dir * 15);
+    } else if (activeMedia.type === 'ebook') {
+      ttsIndex = Math.max(0, Math.min(ttsSentences.length - 1, ttsIndex + dir * 3));
+      if (isPlaying) speakNextSentence();
+    }
+  }
+
+  function handleSeek(val) {
+    if (!activeMedia) return;
+    const pct = val / 100;
+    if (activeMedia.type === 'video' && videoEl.duration) {
+      videoEl.currentTime = videoEl.duration * pct;
+    } else if (activeMedia.type === 'music' && audioEl.duration) {
+      audioEl.currentTime = audioEl.duration * pct;
+    } else if (activeMedia.type === 'ebook' && ttsSentences.length) {
+      ttsIndex = Math.floor(ttsSentences.length * pct);
+      if (isPlaying) speakNextSentence();
+    }
+  }
+
+  // 同步影音進度條
+  [videoEl, audioEl].forEach(el => {
+    el.addEventListener('timeupdate', () => {
+      if (!el.duration) return;
+      document.getElementById('seek-bar').value = (el.currentTime / el.duration) * 100;
+      document.getElementById('time-current').textContent = formatTime(el.currentTime);
+      document.getElementById('time-total').textContent = formatTime(el.duration);
+    });
+    el.addEventListener('ended', () => {
+      isPlaying = false;
+      document.getElementById('master-play-btn').textContent = '▶';
+    });
   });
-  await saveMeta();
-  renderCurrentView();
-}
 
-async function promptAddToPlaylist(fileId) {
-  const names = appMeta.playlists.map((p, idx) => `${idx + 1}. ${p.name}`).join('\n');
-  const choice = prompt(`請輸入要加入的播放清單編號：\n${names}`);
-  const idx = parseInt(choice, 10) - 1;
-  if (appMeta.playlists[idx]) {
-    if (!appMeta.playlists[idx].fileIds.includes(fileId)) {
-      appMeta.playlists[idx].fileIds.push(fileId);
-      await saveMeta();
-      alert(`已加入「${appMeta.playlists[idx].name}」！`);
+  // iOS / Android 鎖屏背景控制中心連動 (Media Session API)
+  function setupMediaSession(title, artist) {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title,
+        artist: artist,
+        album: 'MYTUBE 典藏庫'
+      });
+      navigator.mediaSession.setActionHandler('play', () => { if (!isPlaying) toggleMasterPlay(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (isPlaying) toggleMasterPlay(); });
+      navigator.mediaSession.setActionHandler('previoustrack', () => skipStep(-1));
+      navigator.mediaSession.setActionHandler('nexttrack', () => skipStep(1));
     }
   }
-}
 
-async function openBatchSelectForPlaylist(plId) {
-  const allFiles = await dbGetAll('mediaFiles');
-  const pl = appMeta.playlists.find(p => p.id === plId);
-  if (!allFiles.length) { alert('目前還沒有已下載的歌曲'); return; }
-  const listStr = allFiles.map((f, i) => `${i + 1}. [${f.type}] ${f.name}`).join('\n');
-  const ans = prompt(`輸入要收錄的曲目編號（多個請用逗號隔開，例如 1,2,3）：\n${listStr}`);
-  if (ans !== null) {
-    const indices = ans.split(/[,，\s]+/).map(n => parseInt(n, 10) - 1);
-    pl.fileIds = indices.filter(i => allFiles[i]).map(i => allFiles[i].id);
-    await saveMeta();
-    renderCurrentView();
-  }
-}
+  // ==========================================
+  // 歐洲中古世紀典藏閱讀器邏輯
+  // ==========================================
+  async function openBookReader(id) {
+    const all = await dbGetAll();
+    const book = all.find(x => x.id === id);
+    if (!book) return;
 
-(async () => {
-  await requestPersistentStorage();
-  await initDB();
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    currentBook = book;
+    document.getElementById('reader-title').textContent = book.title;
+    paginateBook(book.text);
+    currentPageIndex = Math.min(book.lastPage || 0, bookPages.length - 1);
+    renderBookPage();
+    document.getElementById('ebook-reader').classList.add('open');
   }
-  await setupAuth();
-})();
+
+  function closeReader() {
+    document.getElementById('ebook-reader').classList.remove('open');
+  }
+
+  function paginateBook(text) {
+    // 依每頁約 420 字智慧分段，避免切斷段落
+    const charsPerPage = Math.max(260, Math.round(450 * (18 / readerFontSize)));
+    const paragraphs = text.split(/
++/);
+    bookPages = [];
+    let currentChunk = '';
+
+    for (const p of paragraphs) {
+      if ((currentChunk.length + p.length) > charsPerPage && currentChunk.length > 0) {
+        bookPages.push(currentChunk.trim());
+        currentChunk = p + '
+
+';
+      } else {
+        currentChunk += p + '
+
+';
+      }
+    }
+    if (currentChunk.trim()) bookPages.push(currentChunk.trim());
+    if (bookPages.length === 0) bookPages = ['（空白內容）'];
+  }
+
+  function renderBookPage() {
+    const contentArea = document.getElementById('book-content-area');
+    const indicator = document.getElementById('page-indicator');
+    const prevBtn = document.getElementById('prev-page-btn');
+    const nextBtn = document.getElementById('next-page-btn');
+
+    if (readerMode === 'scroll') {
+      contentArea.innerHTML = escapeHtml(currentBook.text).replace(/
+/g, '<br><br>');
+      indicator.textContent = '長卷軸模式';
+      prevBtn.style.visibility = 'hidden';
+      nextBtn.style.visibility = 'hidden';
+    } else {
+      const pageText = bookPages[currentPageIndex] || '';
+      contentArea.innerHTML = escapeHtml(pageText).replace(/
+
+/g, '<br><br>').replace(/
+/g, '<br>');
+      indicator.textContent = `第 ${currentPageIndex + 1} / ${bookPages.length} 頁`;
+      prevBtn.style.visibility = 'visible';
+      nextBtn.style.visibility = 'visible';
+      document.getElementById('book-leaf').scrollTop = 0;
+
+      // 儲存閱讀書籤進度
+      currentBook.lastPage = currentPageIndex;
+      dbPut(currentBook);
+    }
+  }
+
+  function turnPage(delta) {
+    if (readerMode !== 'page') return;
+    const nextIdx = currentPageIndex + delta;
+    if (nextIdx < 0 || nextIdx >= bookPages.length) return;
+
+    const leaf = document.getElementById('book-leaf');
+    leaf.classList.add(delta > 0 ? 'flip-next' : 'flip-prev');
+    setTimeout(() => {
+      currentPageIndex = nextIdx;
+      renderBookPage();
+      leaf.classList.remove('flip-next', 'flip-prev');
+    }, 180);
+  }
+
+  // 點擊書頁左右側模擬真實翻頁
+  function handleBookTap(e) {
+    if (readerMode !== 'page') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    if (clickX < rect.width * 0.28) turnPage(-1);
+    else if (clickX > rect.width * 0.72) turnPage(1);
+  }
+
+  function changeReaderTheme(themeClass) {
+    const reader = document.getElementById('ebook-reader');
+    reader.classList.remove('theme-obsidian', 'theme-parchment', 'theme-abbey', 'theme-emerald');
+    reader.classList.add(themeClass);
+  }
+
+  function changeReaderFont(fontClass) {
+    const reader = document.getElementById('ebook-reader');
+    reader.classList.remove('font-song', 'font-kai', 'font-ming', 'font-sans');
+    reader.classList.add(fontClass);
+  }
+
+  function changeReaderMode(mode) {
+    readerMode = mode;
+    renderBookPage();
+  }
+
+  function adjustFontSize(delta) {
+    readerFontSize = Math.max(14, Math.min(28, readerFontSize + delta));
+    document.getElementById('book-leaf').style.fontSize = readerFontSize + 'px';
+    if (currentBook && readerMode === 'page') {
+      paginateBook(currentBook.text);
+      currentPageIndex = Math.min(currentPageIndex, bookPages.length - 1);
+      renderBookPage();
+    }
+  }
+
+  // PIN 簡易鎖
+  function togglePinLock() {
+    const savedPin = localStorage.getItem('mytube_pin');
+    if (!savedPin) {
+      const newPin = prompt('設定 4 位數隱私 PIN 碼（留空取消）：');
+      if (newPin && newPin.trim()) {
+        localStorage.setItem('mytube_pin', newPin.trim());
+        alert('已啟用 PIN 鎖保護！');
+      }
+    } else {
+      const check = prompt('輸入目前 PIN 碼以解除保護：');
+      if (check === savedPin) {
+        localStorage.removeItem('mytube_pin');
+        alert('已解除 PIN 鎖。');
+      } else if (check !== null) {
+        alert('PIN 碼錯誤');
+      }
+    }
+  }
+
+  function formatTime(sec) {
+    if (!isFinite(sec)) return '00:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  }
+
+  // 啟動初始化
+  (async function boot() {
+    const pin = localStorage.getItem('mytube_pin');
+    if (pin) {
+      let input = '';
+      while (input !== pin) {
+        input = prompt('⚜️ 請輸入 MYTUBE 密碼：');
+        if (input === null) break;
+      }
+    }
+    await initDB();
+    await switchTab('video');
+  })();
 </script>
 </body>
 </html>
