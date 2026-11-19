@@ -2,1172 +2,1970 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#0f0f0f" />
-  <title>MyTube</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MyTube" />
+  <link rel="manifest" href="manifest.json" />
+  <title>MyTube 離線影音庫</title>
   <style>
     :root {
-      --bg: #0f0f0f;
-      --surface: #1c1c1e;
-      --surface-hover: #2c2c2e;
-      --border: #333336;
-      --text: #f5f5f7;
-      --text-sub: #98989d;
-      --accent: #ff2d55;
-      --accent-soft: rgba(255, 45, 85, 0.16);
-      --radius: 14px;
+      --bg: #ffffff;
+      --bg-elevated: #f6f6f6;
+      --bg-header: rgba(255, 255, 255, 0.94);
+      --sheet-bg: #ffffff;
+      --sheet-card: #f2f2f2;
+      --text: #0f0f0f;
+      --sub: #606060;
+      --border: #eaeaea;
+      --pill-bg: #f2f2f2;
+      --pill-active-bg: #0f0f0f;
+      --pill-active-text: #ffffff;
+      --mini-bg: #f8f8f8;
+      --red: #ff0000;
+      --rust: #b83318;
     }
-
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
+    [data-theme="dark"] {
+      --bg: #0b0b0b;
+      --bg-elevated: #181818;
+      --bg-header: rgba(11, 11, 11, 0.94);
+      --sheet-bg: #212121;
+      --sheet-card: #2f2f2f;
+      --text: #f5f5f5;
+      --sub: #aaaaaa;
+      --border: #2c2c2c;
+      --pill-bg: #222222;
+      --pill-active-bg: #ffffff;
+      --pill-active-text: #0f0f0f;
+      --mini-bg: #1c1c1c;
     }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
-      padding: 0;
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* 頂部導覽列 */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: rgba(15, 15, 15, 0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-
-    .brand-icon {
-      width: 28px;
-      height: 28px;
-      background: var(--accent);
-      border-radius: 8px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      color: #fff;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    button {
-      font-family: inherit;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      transition: transform 0.12s ease, opacity 0.15s ease, background-color 0.15s ease;
-    }
-
-    button:active {
-      transform: scale(0.95);
-    }
-
-    .btn-icon {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-radius: 10px;
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    /* 播放器區塊 */
-    .player-section {
-      background: #000;
-      border-bottom: 1px solid var(--border);
-      padding: 12px 16px 16px;
-      display: none;
-    }
-
-    .player-section.active {
-      display: block;
-    }
-
-    .media-wrapper {
-      width: 100%;
-      max-width: 720px;
-      margin: 0 auto;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #141414;
-      position: relative;
-    }
-
-    video {
-      width: 100%;
-      max-height: 42vh;
-      display: block;
-      background: #000;
-    }
-
-    .audio-cover {
-      display: none;
-      padding: 28px 20px;
-      text-align: center;
-      background: linear-gradient(145deg, #24141b, #161618);
-    }
-
-    .audio-cover.active {
-      display: block;
-    }
-
-    .audio-disc {
-      width: 68px;
-      height: 68px;
-      margin: 0 auto 12px;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      border: 2px solid var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 28px;
-    }
-
-    audio {
-      width: 100%;
-      margin-top: 12px;
-      height: 40px;
-    }
-
-    .now-playing-bar {
-      max-width: 720px;
-      margin: 10px auto 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .now-playing-title {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1;
-    }
-
-    .player-controls {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    /* 主內容區 */
-    main {
-      flex: 1;
-      width: 100%;
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 16px 16px 90px;
-    }
-
-    /* 分頁切換：僅保留 影片 / 音樂 */
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      background: var(--surface);
-      padding: 4px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      margin-bottom: 14px;
-    }
-
-    .tab-btn {
-      background: transparent;
-      color: var(--text-sub);
-      padding: 10px 0;
-      border-radius: 9px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .tab-btn.active {
-      background: var(--accent);
-      color: #fff;
-    }
-
-    /* 播放清單列 */
-    .playlist-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-      scrollbar-width: none;
-    }
-
-    .playlist-bar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .chip {
-      background: var(--surface);
-      color: var(--text-sub);
-      border: 1px solid var(--border);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .chip.active {
-      background: var(--text);
-      color: var(--bg);
-      border-color: var(--text);
-      font-weight: 600;
-    }
-
-    /* 搜尋列 */
-    .search-box {
-      margin-bottom: 14px;
-    }
-
-    .search-box input {
-      width: 100%;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      padding: 10px 14px;
-      color: var(--text);
-      font-size: 14px;
-      outline: none;
-      user-select: text;
-    }
-
-    .search-box input:focus {
-      border-color: var(--accent);
-    }
-
-    /* 檔案列表 */
-    .media-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .media-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .media-item.playing {
-      border-color: var(--accent);
-      background: var(--accent-soft);
-    }
-
-    .media-info {
-      flex: 1;
-      min-width: 0;
-      cursor: pointer;
-    }
-
-    .media-name {
-      font-size: 15px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 4px;
-    }
-
-    .media-meta {
-      font-size: 12px;
-      color: var(--text-sub);
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .badge {
-      background: rgba(255, 255, 255, 0.08);
-      padding: 2px 7px;
-      border-radius: 5px;
-      font-size: 11px;
-      color: var(--text);
-    }
-
-    .item-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .btn-mini {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 12px;
-    }
-
-    .btn-mini.danger {
-      color: #ff6961;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: var(--text-sub);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-      margin-top: 8px;
-    }
-
-    .empty-state p {
-      margin: 6px 0 16px;
-      font-size: 14px;
-    }
-
-    /* 彈窗 Modal（關閉時徹底隱藏，絕不擋住點擊） */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.78);
-      z-index: 100;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    .modal-backdrop.open {
-      display: flex;
-    }
-
-    .modal-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      width: 100%;
-      max-width: 360px;
-      padding: 22px;
-      text-align: center;
-    }
-
-    .modal-card h3 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-
-    .modal-card p {
-      margin: 0 0 16px;
-      font-size: 13px;
-      color: var(--text-sub);
-    }
-
-    .modal-card input {
-      width: 100%;
+      padding: env(safe-area-inset-top) 0 115px 0;
       background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 11px 14px;
       color: var(--text);
-      font-size: 16px;
-      text-align: center;
-      margin-bottom: 14px;
-      outline: none;
-      user-select: text;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      transition: background 0.25s ease, color 0.25s ease;
     }
-
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
+    #lockScreen {
+      position: fixed; inset: 0; background: var(--bg); color: var(--text); z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;
     }
-
-    .modal-actions button {
-      flex: 1;
-      padding: 10px;
-      font-size: 14px;
+    .lock-icon {
+      width: 64px; height: 64px; border-radius: 50%; background: var(--pill-active-bg); color: var(--pill-active-text);
+      display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 14px;
     }
-
-    /* 狀態提示 Toast */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #2c2c2e;
-      color: #fff;
-      padding: 10px 18px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 500;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
-      z-index: 200;
+    .pin-input {
+      width: 190px; height: 50px; font-size: 24px; text-align: center; letter-spacing: 10px;
+      background: var(--bg-elevated); color: var(--text);
+      border: 1.5px solid var(--border); border-radius: 16px; margin: 10px 0; outline: none;
+    }
+    .pin-input:focus { border-color: var(--text); }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 6px 16px; position: sticky; top: 0;
+      background: var(--bg-header); backdrop-filter: blur(12px); z-index: 100;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 7px; }
+    .yt-badge {
+      background: var(--red); color: #fff; width: 28px; height: 20px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center; font-size: 11px;
+    }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .nav-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      position: sticky; top: 44px; background: var(--bg-header); backdrop-filter: blur(12px); z-index: 99;
+    }
+    .tab-btn {
+      flex: 1; text-align: center; padding: 10px 4px; font-size: 14px; font-weight: 600;
+      color: var(--sub); border: none; background: transparent; position: relative; cursor: pointer;
+    }
+    .tab-btn.active { color: var(--text); font-weight: 800; }
+    .tab-btn.active::after {
+      content: ""; position: absolute; bottom: 0; left: 18%; right: 18%;
+      height: 2.5px; background: var(--red); border-radius: 2px;
+    }
+    #bgTaskBanner {
       display: none;
+      background: #1a2a1e;
+      color: #6ee7b7;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 16px;
+      border-bottom: 1px solid rgba(110, 231, 183, 0.2);
+      align-items: center;
+      justify-content: space-between;
+    }
+    [data-theme="light"] #bgTaskBanner {
+      background: #ecfdf5;
+      color: #065f46;
+      border-bottom: 1px solid #a7f3d0;
+    }
+    .container { padding: 14px 16px; }
+    .pill-btn {
+      border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600;
+      border: 1px solid var(--border); cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .pill-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pill-primary { background: var(--pill-active-bg); color: var(--pill-active-text); border-color: var(--pill-active-bg); }
+    .pill-ghost { background: var(--pill-bg); color: var(--text); border-color: transparent; }
+    .pill-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* 播完行為設定條 */
+    .play-mode-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 12px; padding: 8px 12px; margin-bottom: 14px; gap: 8px;
+    }
+    .play-mode-label { font-size: 12px; font-weight: 700; color: var(--sub); white-space: nowrap; }
+    .play-mode-pills { display: flex; gap: 4px; }
+    .mode-chip {
+      border: 1px solid var(--border); background: var(--bg); color: var(--sub);
+      border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .mode-chip.active {
+      background: var(--pill-active-bg); color: var(--pill-active-text); border-color: var(--pill-active-bg);
     }
 
-    .toast.show {
-      display: block;
+    /* 音樂列表樣式 */
+    .song-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 4px; border-radius: 10px; margin-bottom: 4px; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .song-row:active, .song-row.playing { background: var(--bg-elevated); }
+    .song-left { display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; }
+    .mp3-black-box {
+      width: 50px; height: 50px; border-radius: 8px;
+      background: #000000; color: #ffffff;
+      border: 1px solid #2c2c2c;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; letter-spacing: 0.8px;
+      flex-shrink: 0;
+    }
+    .song-info { overflow: hidden; flex: 1; }
+    .song-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .song-row.playing .song-title { color: #ff3b30; }
+    .song-meta {
+      font-size: 12px; color: var(--sub); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .dots-btn {
+      background: transparent; border: none; color: var(--text);
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+    }
+    .dots-btn:active { background: var(--pill-bg); }
+
+    /* 影片卡片 + 靜態首幀封面 + 畫面中心前5秒靜音預覽 */
+    .media-card { margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+    .media-thumb {
+      width: 100%; aspect-ratio: 16/9; background: #141414; border-radius: 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: #fff; position: relative; overflow: hidden; cursor: pointer;
+      border: 1px solid var(--border);
+    }
+    .media-thumb video {
+      width: 100%; height: 100%; object-fit: cover; display: block; background: #141414;
+    }
+    .thumb-poster-overlay {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+      pointer-events: none; transition: opacity 0.25s ease;
+    }
+    .preview-badge {
+      position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 700; color: #fff;
+      background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(4px);
+      display: none; align-items: center; gap: 4px; pointer-events: none;
+    }
+    .media-card.is-previewing .preview-badge { display: inline-flex; }
+    .media-card.is-previewing { border-bottom-color: var(--red); }
+    .play-center-hint {
+      position: absolute; width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(0, 0, 0, 0.62); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; pointer-events: none; backdrop-filter: blur(4px);
+      transition: opacity 0.2s ease;
+    }
+    .media-card.is-playing-full .play-center-hint,
+    .media-card.is-playing-full .preview-badge,
+    .media-card.is-playing-full .thumb-poster-overlay {
+      display: none !important;
+    }
+    .type-tag {
+      position: absolute; bottom: 8px; right: 8px; padding: 2px 8px; border-radius: 4px;
+      font-size: 11px; font-weight: 700; color: #fff; pointer-events: none;
+    }
+    .tag-mp4 { background: rgba(15,15,15,0.85); }
+    .media-row { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; gap: 4px; }
+    .media-title { font-size: 15px; font-weight: 700; line-height: 1.35; word-break: break-word; }
+    .media-card.is-playing-full .media-title { color: #ff3b30; }
+    .media-sub { font-size: 12px; color: var(--sub); margin-top: 3px; }
+
+    /* 播放清單 */
+    .pl-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0; margin-bottom: 8px; cursor: pointer;
+    }
+    .pl-left { display: flex; align-items: center; gap: 14px; overflow: hidden; }
+    .pl-cover {
+      width: 112px; height: 64px; border-radius: 10px; background: #1e1e1e; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+      position: relative; flex-shrink: 0; border: 1px solid var(--border);
+    }
+    .pl-count {
+      position: absolute; bottom: 5px; right: 7px; background: rgba(0,0,0,0.7);
+      font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+    }
+
+    /* 下載區與 MYTUBE 資料夾分類卡片 */
+    .dl-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .avatar-circle {
+      width: 54px; height: 54px; border-radius: 50%; background: var(--rust); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0;
+    }
+    .folder-sync-card {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px 14px; margin-bottom: 12px;
+    }
+    .folder-tree-badge {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;
+      font-size: 11px; font-weight: 700;
+    }
+    .tree-pill {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); padding: 4px 9px; border-radius: 8px;
+    }
+    .url-box {
+      width: 100%; height: 92px; border-radius: 18px; border: 1.5px solid var(--border);
+      background: var(--bg-elevated); color: var(--text); padding: 12px 14px; font-size: 14px; resize: none; outline: none;
+    }
+    .url-box:focus { border-color: var(--text); }
+    .hist-card {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 14px; margin-bottom: 8px; border: 1px solid var(--border);
+      border-radius: 14px; background: var(--bg-elevated);
+    }
+
+    /* 底部迷你播放器（含 上一首 ⏮、播放/暫停、下一首 ⏭ 三顆完整控制鈕） */
+    #miniPlayer {
+      position: fixed; bottom: 0; left: 0; right: 0; max-width: 480px; margin: 0 auto;
+      background: var(--mini-bg); border-top: 1px solid var(--border);
+      padding: 0 12px calc(10px + env(safe-area-inset-bottom)) 12px;
+      z-index: 500; display: none;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.14);
+    }
+    .mini-scrub-zone {
+      width: 100%;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      margin-bottom: 2px;
+    }
+    .mini-progress-track {
+      position: relative;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 999px;
+      transition: height 0.12s ease;
+    }
+    .mini-scrub-zone.scrubbing .mini-progress-track {
+      height: 6px;
+    }
+    .mini-progress-bar {
+      position: relative;
+      height: 100%;
+      width: 0%;
+      background: var(--red);
+      border-radius: 999px;
+    }
+    .mini-scrub-thumb {
+      position: absolute;
+      right: -7px;
+      top: 50%;
+      transform: translateY(-50%) scale(1);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+      transition: transform 0.12s ease;
+    }
+    .mini-scrub-zone.scrubbing .mini-scrub-thumb {
+      transform: translateY(-50%) scale(1.38);
+    }
+    .mini-content { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .mini-left { display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1; min-width: 0; }
+    .mini-cover {
+      width: 40px; height: 40px; border-radius: 6px; background: #000000; color: #ffffff;
+      border: 1px solid #333; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
+    .mini-text { overflow: hidden; flex: 1; min-width: 0; }
+    .mini-title {
+      font-size: 14px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mini-sub {
+      font-size: 11px; color: var(--sub); margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mini-controls { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .ctrl-icon-btn {
+      background: transparent; border: none; color: var(--text);
+      font-size: 19px; width: 35px; height: 35px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .ctrl-icon-btn:active { background: var(--pill-bg); }
+
+    /* === 仿 YouTube Music 底部滑出式選單 (Bottom Sheet) === */
+    #ytSheetBackdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.58);
+      z-index: 2000; display: none; align-items: flex-end; justify-content: center;
+    }
+    #ytSheetBackdrop.open { display: flex; }
+    .yt-sheet-panel {
+      width: 100%; max-width: 480px;
+      background: var(--sheet-bg); color: var(--text);
+      border-radius: 18px 18px 0 0;
+      padding: 10px 16px calc(22px + env(safe-area-inset-bottom)) 16px;
+      box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.35);
+      animation: sheetSlideUp 0.22s ease-out;
+    }
+    @keyframes sheetSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .sheet-drag-bar {
+      width: 38px; height: 4px; border-radius: 2px;
+      background: var(--sub); opacity: 0.35; margin: 0 auto 12px auto;
+    }
+    .sheet-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 10px;
+    }
+    .sheet-header-info { overflow: hidden; flex: 1; }
+    .sheet-item-title {
+      font-size: 16px; font-weight: 800; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sheet-item-sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .sheet-close-btn {
+      background: transparent; border: none; color: var(--text);
+      font-size: 20px; width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+    }
+    .sheet-quick-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin: 14px 0;
+    }
+    .sheet-quick-card {
+      background: var(--sheet-card); border: none; border-radius: 12px;
+      padding: 14px 10px; color: var(--text);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 7px; cursor: pointer; font-size: 13px; font-weight: 700;
+    }
+    .sheet-quick-card:active { opacity: 0.78; }
+    .sheet-quick-icon { font-size: 22px; line-height: 1; }
+    .sheet-list-action {
+      width: 100%; background: transparent; border: none; color: var(--text);
+      padding: 13px 4px; display: flex; align-items: center; gap: 14px;
+      font-size: 15px; font-weight: 600; cursor: pointer; text-align: left;
+    }
+    .sheet-list-action:active { background: var(--sheet-card); border-radius: 10px; }
+
+    .pl-picker-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 4px; cursor: pointer; border-radius: 10px;
+    }
+    .pl-picker-row:active { background: var(--sheet-card); }
+    .pl-picker-left { display: flex; align-items: center; gap: 14px; overflow: hidden; flex: 1; }
+    .pl-picker-thumb {
+      width: 50px; height: 50px; border-radius: 8px;
+      background: var(--sheet-card); color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; flex-shrink: 0;
+    }
+    .pl-picker-thumb.liked-grad {
+      background: linear-gradient(135deg, #3b82f6, #ec4899); color: #ffffff;
+    }
+    .pl-picker-name {
+      font-size: 15px; font-weight: 700; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pl-picker-count { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .pl-check-badge {
+      font-size: 16px; font-weight: 800; color: #34c759; padding-left: 8px;
+    }
+
+    #ytToast {
+      position: fixed; bottom: 86px; left: 50%; transform: translateX(-50%);
+      background: #1f1f1f; color: #ffffff; border: 1px solid #383838;
+      padding: 10px 18px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      z-index: 3000; display: none; white-space: nowrap;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
     }
   </style>
 </head>
 <body>
 
-  <!-- 頂部導覽列 -->
-  <header>
-    <div class="brand">
-      <span class="brand-icon">▶</span>
-      <span>MyTube</span>
-    </div>
-    <div class="header-actions">
-      <button type="button" class="btn-icon" id="btnPinSetting">🔒 密碼鎖</button>
-      <button type="button" class="btn-primary" id="btnImportTrigger">＋ 匯入檔案</button>
-      <input type="file" id="fileInput" accept="video/*,audio/*,.mp4,.mp3,.m4a,.mov,.wav,.aac,.webm" multiple style="display:none;" />
-    </div>
-  </header>
+<div id="lockScreen">
+  <div class="lock-icon">🔒</div>
+  <h2 id="lockTitle" style="margin:0; font-size:22px; font-weight:800;">MyTube 私人空間</h2>
+  <p id="lockDesc" style="color:var(--sub); font-size:13px; text-align:center; margin:8px 0 4px 0;">請輸入 4 碼數字密碼解鎖</p>
+  <input id="pinInput" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off" />
+  <input id="pinConfirm" class="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="再次確認" autocomplete="off" style="display:none;" />
+  <button id="pinSubmitBtn" class="pill-btn pill-primary" style="width:200px; margin-top:8px;">解鎖進入</button>
+  <p id="lockMsg" style="color:#ff3b30; font-size:13px; margin-top:10px; min-height:18px;"></p>
+  <button id="resetPinBtn" style="display:none; margin-top:18px; background:none; border:none; color:var(--sub); font-size:12px; text-decoration:underline; cursor:pointer;" onclick="forgotOrResetPin()">忘記密碼？重設此裝置密碼</button>
+</div>
 
-  <!-- 播放器區域 -->
-  <section class="player-section" id="playerSection">
-    <div class="media-wrapper">
-      <video id="videoPlayer" controls playsinline webkit-playsinline></video>
-      <div class="audio-cover" id="audioCover">
-        <div class="audio-disc">🎵</div>
-        <div id="audioCoverTitle" style="font-weight:600; font-size:15px;">正在播放音樂</div>
-        <audio id="audioPlayer" controls playsinline></audio>
-      </div>
-    </div>
-    <div class="now-playing-bar">
-      <div class="now-playing-title" id="nowPlayingTitle">未選擇檔案</div>
-      <div class="player-controls">
-        <button type="button" class="btn-mini" id="btnPrev">⏮ 上一首</button>
-        <button type="button" class="btn-mini" id="btnNext">下一首 ⏭</button>
-        <button type="button" class="btn-mini" id="btnLoop">🔁 循環:關</button>
-        <button type="button" class="btn-mini" id="btnClosePlayer">✕</button>
-      </div>
-    </div>
-  </section>
+<div class="topbar">
+  <div class="logo-wrap">
+    <div class="yt-badge">▶</div>
+    <div class="brand">MyTube</div>
+  </div>
+  <div style="display:flex; gap:6px; align-items:center;">
+    <button id="themeToggleBtn" class="pill-btn pill-ghost pill-sm" onclick="cycleTheme()">🌓 自動</button>
+    <button class="pill-btn pill-ghost pill-sm" onclick="lockApp()">🔒</button>
+  </div>
+</div>
 
-  <!-- 主介面 -->
-  <main>
-    <!-- 分頁切換（僅保留 影片 與 音樂） -->
-    <div class="tabs">
-      <button type="button" class="tab-btn active" id="tabVideo" data-tab="video">🎬 影片</button>
-      <button type="button" class="tab-btn" id="tabAudio" data-tab="audio">🎵 音樂</button>
-    </div>
+<!-- 分頁列：影片、音樂、播放清單、下載 -->
+<div class="nav-tabs">
+  <button class="tab-btn active" data-tab="MP4" onclick="switchTab('MP4')">影片</button>
+  <button class="tab-btn" data-tab="MP3" onclick="switchTab('MP3')">音樂</button>
+  <button class="tab-btn" data-tab="PLAYLIST" onclick="switchTab('PLAYLIST')">播放清單</button>
+  <button class="tab-btn" data-tab="DOWNLOAD" onclick="switchTab('DOWNLOAD')">下載</button>
+</div>
 
-    <!-- 播放清單列 -->
-    <div class="playlist-bar" id="playlistBar"></div>
+<!-- 全域背景下載狀態列 -->
+<div id="bgTaskBanner">
+  <span id="bgTaskText">⏳ 背景下載進行中...</span>
+  <span style="font-size:11px; opacity:0.85;">切換分頁不中斷</span>
+</div>
 
-    <!-- 搜尋列 -->
-    <div class="search-box">
-      <input type="search" id="searchInput" placeholder="搜尋檔案名稱..." />
-    </div>
+<div id="mainContent" class="container"></div>
 
-    <!-- 媒體列表 -->
-    <div class="media-list" id="mediaList"></div>
-  </main>
+<input type="file" id="filePicker" accept="video/mp4,audio/mp3,audio/mpeg,audio/mp4,audio/x-m4a,.mp4,.mp3,.m4a" multiple style="display:none;" onchange="handleFileImport(event)" />
 
-  <!-- PIN 碼解鎖 / 設定視窗 -->
-  <div class="modal-backdrop" id="pinModal">
-    <div class="modal-card">
-      <h3 id="pinModalTitle">輸入 PIN 碼</h3>
-      <p id="pinModalDesc">請輸入 4 位數密碼以解鎖 MyTube</p>
-      <input type="password" id="pinInput" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" />
-      <div class="modal-actions">
-        <button type="button" class="btn-icon" id="btnPinCancel">取消</button>
-        <button type="button" class="btn-primary" id="btnPinConfirm">確認</button>
+<!-- 底部迷你播放器（含上一首 ⏮、播放/暫停、下一首 ⏭） -->
+<div id="miniPlayer">
+  <div id="miniScrubZone" class="mini-scrub-zone">
+    <div id="miniProgressTrack" class="mini-progress-track">
+      <div id="miniProgressBar" class="mini-progress-bar">
+        <div class="mini-scrub-thumb"></div>
       </div>
     </div>
   </div>
-
-  <!-- 新增播放清單視窗 -->
-  <div class="modal-backdrop" id="playlistModal">
-    <div class="modal-card">
-      <h3>新增播放清單</h3>
-      <p>輸入新的清單名稱（例如：運動歌單、電影收藏）</p>
-      <input type="text" id="playlistNameInput" placeholder="請輸入名稱" />
-      <div class="modal-actions">
-        <button type="button" class="btn-icon" id="btnPlCancel">取消</button>
-        <button type="button" class="btn-primary" id="btnPlConfirm">建立</button>
+  <div class="mini-content">
+    <div class="mini-left">
+      <div class="mini-cover">MP3</div>
+      <div class="mini-text">
+        <div id="nowPlayingTitle" class="mini-title">未播放</div>
+        <div id="nowPlayingTime" class="mini-sub">MyTube 離線音樂 · 背景播放中</div>
       </div>
     </div>
-  </div>
-
-  <!-- 加入清單選擇視窗 -->
-  <div class="modal-backdrop" id="assignModal">
-    <div class="modal-card">
-      <h3>加入播放清單</h3>
-      <p id="assignFileName">選擇要歸類的清單</p>
-      <div id="assignListOptions" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
-      <div class="modal-actions">
-        <button type="button" class="btn-icon" id="btnAssignCancel">關閉</button>
-      </div>
+    <div class="mini-controls">
+      <button class="ctrl-icon-btn" aria-label="上一首" onclick="playPrevInQueue()">⏮</button>
+      <button id="playPauseBtn" class="ctrl-icon-btn" aria-label="播放或暫停" onclick="togglePlayPause()">⏸</button>
+      <button class="ctrl-icon-btn" aria-label="下一首" onclick="playNextInQueue()">⏭</button>
     </div>
   </div>
+  <audio id="bgAudioPlayer" playsinline></audio>
+</div>
 
-  <!-- 提示訊息 -->
-  <div class="toast" id="toast"></div>
+<!-- 仿 YouTube 三個點點底部滑出式選單 -->
+<div id="ytSheetBackdrop" onclick="if(event.target===this) closeItemMenu()">
+  <div class="yt-sheet-panel" id="ytSheetPanel"></div>
+</div>
 
-  <script>
-    (function () {
-      "use strict";
+<!-- 輕量操作提示 -->
+<div id="ytToast"></div>
 
-      // 全新獨立資料庫名稱，避免舊版殘留衝突
-      const DB_NAME = "MyTube_Standalone_DB_v2";
-      const DB_VERSION = 1;
-      const STORE_NAME = "media_files";
+<script>
+// === 1. 日夜自動主題切換 ===
+let themeMode = localStorage.getItem('mytube_theme_mode') || 'auto';
 
-      let db = null;
-      let allItems = [];
-      let currentTab = "video"; // "video" 或 "audio"
-      let currentPlaylist = "ALL";
-      let searchQuery = "";
-      let currentPlayingId = null;
-      let currentObjectUrl = null;
-      let isLoopOne = false;
-      let pinMode = "unlock"; // "unlock" | "set" | "remove"
-      let pendingAssignId = null;
+function applyTheme() {
+  const btn = document.getElementById('themeToggleBtn');
+  let targetTheme = 'light';
+  if (themeMode === 'auto') {
+    const hour = new Date().getHours();
+    targetTheme = (hour >= 18 || hour < 6) ? 'dark' : 'light';
+    if (btn) btn.textContent = '🌓 自動';
+  } else if (themeMode === 'dark') {
+    targetTheme = 'dark';
+    if (btn) btn.textContent = '🌙 深色';
+  } else {
+    targetTheme = 'light';
+    if (btn) btn.textContent = '☀️ 淺色';
+  }
+  document.documentElement.setAttribute('data-theme', targetTheme);
+  const metaTheme = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', targetTheme === 'dark' ? 'black-translucent' : 'default');
+  }
+}
 
-      // DOM 元素參照
-      const el = {
-        btnImportTrigger: document.getElementById("btnImportTrigger"),
-        fileInput: document.getElementById("fileInput"),
-        btnPinSetting: document.getElementById("btnPinSetting"),
-        tabVideo: document.getElementById("tabVideo"),
-        tabAudio: document.getElementById("tabAudio"),
-        playlistBar: document.getElementById("playlistBar"),
-        searchInput: document.getElementById("searchInput"),
-        mediaList: document.getElementById("mediaList"),
-        playerSection: document.getElementById("playerSection"),
-        videoPlayer: document.getElementById("videoPlayer"),
-        audioCover: document.getElementById("audioCover"),
-        audioCoverTitle: document.getElementById("audioCoverTitle"),
-        audioPlayer: document.getElementById("audioPlayer"),
-        nowPlayingTitle: document.getElementById("nowPlayingTitle"),
-        btnPrev: document.getElementById("btnPrev"),
-        btnNext: document.getElementById("btnNext"),
-        btnLoop: document.getElementById("btnLoop"),
-        btnClosePlayer: document.getElementById("btnClosePlayer"),
-        pinModal: document.getElementById("pinModal"),
-        pinModalTitle: document.getElementById("pinModalTitle"),
-        pinModalDesc: document.getElementById("pinModalDesc"),
-        pinInput: document.getElementById("pinInput"),
-        btnPinCancel: document.getElementById("btnPinCancel"),
-        btnPinConfirm: document.getElementById("btnPinConfirm"),
-        playlistModal: document.getElementById("playlistModal"),
-        playlistNameInput: document.getElementById("playlistNameInput"),
-        btnPlCancel: document.getElementById("btnPlCancel"),
-        btnPlConfirm: document.getElementById("btnPlConfirm"),
-        assignModal: document.getElementById("assignModal"),
-        assignFileName: document.getElementById("assignFileName"),
-        assignListOptions: document.getElementById("assignListOptions"),
-        btnAssignCancel: document.getElementById("btnAssignCancel"),
-        toast: document.getElementById("toast")
-      };
+function cycleTheme() {
+  const order = ['auto', 'light', 'dark'];
+  themeMode = order[(order.indexOf(themeMode) + 1) % order.length];
+  localStorage.setItem('mytube_theme_mode', themeMode);
+  applyTheme();
+}
 
-      function showToast(msg) {
-        el.toast.textContent = msg;
-        el.toast.classList.add("show");
-        clearTimeout(showToast._timer);
-        showToast._timer = setTimeout(() => {
-          el.toast.classList.remove("show");
-        }, 2400);
+applyTheme();
+setInterval(() => { if (themeMode === 'auto') applyTheme(); }, 60000);
+
+async function requestPersistentStorage() {
+  if (navigator.storage && navigator.storage.persist) {
+    await navigator.storage.persist();
+  }
+}
+
+// === 2. 本機獨立儲存核心（每支手機完全獨立隔離） ===
+const DB_NAME = 'MyTubeOfflineDB_V2';
+const DB_VERSION = 1;
+const PIN_STORAGE_KEY = 'mytube_device_pin_v2';
+const META_STORAGE_KEY = 'mytube_device_meta_v2';
+let db = null;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('mediaFiles')) {
+        database.createObjectStore('mediaFiles', { keyPath: 'id' });
       }
-
-      // 播放清單管理 (存於 localStorage)
-      function getPlaylists() {
-        try {
-          const raw = localStorage.getItem("mytube_playlists_v2");
-          return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-          return [];
-        }
+      if (!database.objectStoreNames.contains('meta')) {
+        database.createObjectStore('meta', { keyPath: 'key' });
       }
-
-      function savePlaylists(list) {
-        localStorage.setItem("mytube_playlists_v2", JSON.stringify(list));
-      }
-
-      // 初始化 IndexedDB
-      function initDB() {
-        return new Promise((resolve, reject) => {
-          const req = indexedDB.open(DB_NAME, DB_VERSION);
-          req.onupgradeneeded = (e) => {
-            const database = e.target.result;
-            if (!database.objectStoreNames.contains(STORE_NAME)) {
-              database.createObjectStore(STORE_NAME, { keyPath: "id" });
-            }
-          };
-          req.onsuccess = (e) => {
-            db = e.target.result;
-            resolve(db);
-          };
-          req.onerror = (e) => {
-            reject(e.target.error);
-          };
-        });
-      }
-
-      function loadAllMedia() {
-        return new Promise((resolve, reject) => {
-          if (!db) return resolve([]);
-          const tx = db.transaction(STORE_NAME, "readonly");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.getAll();
-          req.onsuccess = () => {
-            allItems = (req.result || []).sort((a, b) => b.createdAt - a.createdAt);
-            resolve(allItems);
-          };
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function saveMediaRecord(record) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.put(record);
-          req.onsuccess = () => resolve();
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      function deleteMediaRecord(id) {
-        return new Promise((resolve, reject) => {
-          const tx = db.transaction(STORE_NAME, "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          const req = store.delete(id);
-          req.onsuccess = () => resolve();
-          req.onerror = () => reject(req.error);
-        });
-      }
-
-      // 判斷檔案屬於影片或音樂
-      function detectMediaCategory(file) {
-        const name = (file.name || "").toLowerCase();
-        const type = (file.type || "").toLowerCase();
-        if (type.startsWith("audio/") || /\.(mp3|m4a|wav|aac|flac|ogg)$/.test(name)) {
-          return "audio";
-        }
-        return "video";
-      }
-
-      function formatSize(bytes) {
-        if (!bytes) return "0 MB";
-        const mb = bytes / (1024 * 1024);
-        return mb >= 1 ? mb.toFixed(1) + " MB" : Math.round(bytes / 1024) + " KB";
-      }
-
-      // 匯入檔案處理
-      async function handleFilesSelected(files) {
-        if (!files || files.length === 0) return;
-        showToast("正在匯入 " + files.length + " 個檔案...");
-        let importedCount = 0;
-        let lastCategory = currentTab;
-
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const category = detectMediaCategory(file);
-          lastCategory = category;
-
-          const record = {
-            id: "media_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
-            name: file.name,
-            category: category, // "video" -> MYTUBE/MP4, "audio" -> MYTUBE/MP3
-            folder: category === "video" ? "MYTUBE/MP4" : "MYTUBE/MP3",
-            mimeType: file.type || (category === "video" ? "video/mp4" : "audio/mpeg"),
-            size: file.size,
-            playlist: currentPlaylist !== "ALL" ? currentPlaylist : "",
-            blob: file,
-            createdAt: Date.now() + i
-          };
-
-          try {
-            await saveMediaRecord(record);
-            importedCount++;
-          } catch (err) {
-            console.error("儲存失敗:", err);
-            showToast("匯入失敗，可能是手機儲存空間不足");
-          }
-        }
-
-        el.fileInput.value = "";
-        await loadAllMedia();
-
-        if (importedCount > 0) {
-          switchTab(lastCategory);
-          showToast("成功匯入 " + importedCount + " 個檔案！");
-        }
-      }
-
-      // 切換分頁（影片 / 音樂）
-      function switchTab(tab) {
-        currentTab = tab;
-        el.tabVideo.classList.toggle("active", tab === "video");
-        el.tabAudio.classList.toggle("active", tab === "audio");
-        renderPlaylists();
-        renderMediaList();
-      }
-
-      // 渲染播放清單列
-      function renderPlaylists() {
-        const playlists = getPlaylists();
-        el.playlistBar.innerHTML = "";
-
-        const allChip = document.createElement("button");
-        allChip.type = "button";
-        allChip.className = "chip" + (currentPlaylist === "ALL" ? " active" : "");
-        allChip.textContent = currentTab === "video" ? "全部影片" : "全部音樂";
-        allChip.onclick = () => {
-          currentPlaylist = "ALL";
-          renderPlaylists();
-          renderMediaList();
-        };
-        el.playlistBar.appendChild(allChip);
-
-        playlists.forEach((pl) => {
-          const chip = document.createElement("button");
-          chip.type = "button";
-          chip.className = "chip" + (currentPlaylist === pl ? " active" : "");
-          chip.textContent = pl;
-          chip.onclick = () => {
-            currentPlaylist = pl;
-            renderPlaylists();
-            renderMediaList();
-          };
-          el.playlistBar.appendChild(chip);
-        });
-
-        const addChip = document.createElement("button");
-        addChip.type = "button";
-        addChip.className = "chip";
-        addChip.textContent = "＋ 新清單";
-        addChip.onclick = () => {
-          el.playlistNameInput.value = "";
-          el.playlistModal.classList.add("open");
-          el.playlistNameInput.focus();
-        };
-        el.playlistBar.appendChild(addChip);
-      }
-
-      // 取得目前篩選後的清單
-      function getFilteredItems() {
-        return allItems.filter((item) => {
-          if (item.category !== currentTab) return false;
-          if (currentPlaylist !== "ALL" && item.playlist !== currentPlaylist) return false;
-          if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-          return true;
-        });
-      }
-
-      // 渲染檔案列表
-      function renderMediaList() {
-        const items = getFilteredItems();
-        el.mediaList.innerHTML = "";
-
-        if (items.length === 0) {
-          const empty = document.createElement("div");
-          empty.className = "empty-state";
-          const label = currentTab === "video" ? "影片 (MP4)" : "音樂 (MP3)";
-          empty.innerHTML = `
-            <div style="font-size:32px;">${currentTab === "video" ? "🎬" : "🎧"}</div>
-            <p>目前沒有任何${label}檔案</p>
-            <button type="button" class="btn-primary" id="btnEmptyImport">＋ 立即從手機選擇檔案</button>
-          `;
-          el.mediaList.appendChild(empty);
-          const btnEmpty = document.getElementById("btnEmptyImport");
-          if (btnEmpty) {
-            btnEmpty.onclick = () => el.fileInput.click();
-          }
-          return;
-        }
-
-        items.forEach((item) => {
-          const row = document.createElement("div");
-          row.className = "media-item" + (item.id === currentPlayingId ? " playing" : "");
-
-          const info = document.createElement("div");
-          info.className = "media-info";
-          info.onclick = () => playItem(item);
-
-          const plTag = item.playlist ? `<span class="badge">${escapeHtml(item.playlist)}</span>` : "";
-          info.innerHTML = `
-            <div class="media-name">${escapeHtml(item.name)}</div>
-            <div class="media-meta">
-              <span class="badge">${item.folder || (item.category === "video" ? "MYTUBE/MP4" : "MYTUBE/MP3")}</span>
-              <span>${formatSize(item.size)}</span>
-              ${plTag}
-            </div>
-          `;
-
-          const actions = document.createElement("div");
-          actions.className = "item-actions";
-
-          const btnAddPl = document.createElement("button");
-          btnAddPl.type = "button";
-          btnAddPl.className = "btn-mini";
-          btnAddPl.textContent = "清單";
-          btnAddPl.onclick = (e) => {
-            e.stopPropagation();
-            openAssignModal(item);
-          };
-
-          const btnDel = document.createElement("button");
-          btnDel.type = "button";
-          btnDel.className = "btn-mini danger";
-          btnDel.textContent = "刪除";
-          btnDel.onclick = async (e) => {
-            e.stopPropagation();
-            if (confirm("確定要刪除「" + item.name + "」嗎？")) {
-              if (currentPlayingId === item.id) {
-                stopAndClosePlayer();
-              }
-              await deleteMediaRecord(item.id);
-              await loadAllMedia();
-              renderMediaList();
-              showToast("已刪除檔案");
-            }
-          };
-
-          actions.appendChild(btnAddPl);
-          actions.appendChild(btnDel);
-
-          row.appendChild(info);
-          row.appendChild(actions);
-          el.mediaList.appendChild(row);
-        });
-      }
-
-      function escapeHtml(str) {
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
-      }
-
-      // 播放媒體（支援 iPhone 背景播放）
-      function playItem(item) {
-        if (!item || !item.blob) return;
-
-        if (currentObjectUrl) {
-          URL.revokeObjectURL(currentObjectUrl);
-        }
-        currentObjectUrl = URL.createObjectURL(item.blob);
-        currentPlayingId = item.id;
-
-        el.playerSection.classList.add("active");
-        el.nowPlayingTitle.textContent = item.name;
-
-        // 停止另一組播放器
-        el.videoPlayer.pause();
-        el.audioPlayer.pause();
-
-        if (item.category === "video") {
-          el.audioCover.classList.remove("active");
-          el.videoPlayer.style.display = "block";
-          el.videoPlayer.src = currentObjectUrl;
-          el.videoPlayer.loop = isLoopOne;
-          el.videoPlayer.play().catch(() => {});
-        } else {
-          el.videoPlayer.style.display = "none";
-          el.audioCover.classList.add("active");
-          el.audioCoverTitle.textContent = item.name;
-          el.audioPlayer.src = currentObjectUrl;
-          el.audioPlayer.loop = isLoopOne;
-          el.audioPlayer.play().catch(() => {});
-        }
-
-        // 設定 iOS 鎖定畫面控制 (Media Session)
-        if ("mediaSession" in navigator) {
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: item.name,
-            artist: "MyTube",
-            album: item.playlist || (item.category === "video" ? "影片" : "音樂")
-          });
-          navigator.mediaSession.setActionHandler("previoustrack", () => playAdjacent(-1));
-          navigator.mediaSession.setActionHandler("nexttrack", () => playAdjacent(1));
-        }
-
-        renderMediaList();
-      }
-
-      function playAdjacent(step) {
-        const items = getFilteredItems();
-        if (items.length === 0) return;
-        const idx = items.findIndex((x) => x.id === currentPlayingId);
-        const nextIdx = idx === -1 ? 0 : (idx + step + items.length) % items.length;
-        playItem(items[nextIdx]);
-      }
-
-      function stopAndClosePlayer() {
-        el.videoPlayer.pause();
-        el.videoPlayer.removeAttribute("src");
-        el.audioPlayer.pause();
-        el.audioPlayer.removeAttribute("src");
-        if (currentObjectUrl) {
-          URL.revokeObjectURL(currentObjectUrl);
-          currentObjectUrl = null;
-        }
-        currentPlayingId = null;
-        el.playerSection.classList.remove("active");
-        renderMediaList();
-      }
-
-      // 加入播放清單彈窗
-      function openAssignModal(item) {
-        pendingAssignId = item.id;
-        el.assignFileName.textContent = "將「" + item.name + "」歸類至：";
-        el.assignListOptions.innerHTML = "";
-
-        const playlists = getPlaylists();
-        const noneBtn = document.createElement("button");
-        noneBtn.type = "button";
-        noneBtn.className = "btn-icon";
-        noneBtn.style.justifyContent = "center";
-        noneBtn.textContent = "未分類（移出清單）";
-        noneBtn.onclick = () => assignToPlaylist("");
-        el.assignListOptions.appendChild(noneBtn);
-
-        playlists.forEach((pl) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "btn-icon";
-          btn.style.justifyContent = "center";
-          btn.textContent = pl;
-          btn.onclick = () => assignToPlaylist(pl);
-          el.assignListOptions.appendChild(btn);
-        });
-
-        el.assignModal.classList.add("open");
-      }
-
-      async function assignToPlaylist(plName) {
-        const target = allItems.find((x) => x.id === pendingAssignId);
-        if (target) {
-          target.playlist = plName;
-          await saveMediaRecord(target);
-          await loadAllMedia();
-          renderMediaList();
-          showToast(plName ? "已加入「" + plName + "」" : "已移出播放清單");
-        }
-        el.assignModal.classList.remove("open");
-        pendingAssignId = null;
-      }
-
-      // PIN 碼鎖定邏輯
-      function updatePinButtonUI() {
-        const savedPin = localStorage.getItem("mytube_pin_v2");
-        el.btnPinSetting.textContent = savedPin ? "🔒 已上鎖" : "🔓 設定密碼";
-      }
-
-      function openPinModal(mode) {
-        pinMode = mode;
-        el.pinInput.value = "";
-        if (mode === "unlock") {
-          el.pinModalTitle.textContent = "MyTube 已鎖定";
-          el.pinModalDesc.textContent = "請輸入 4 位數 PIN 碼進入";
-          el.btnPinCancel.style.display = "none";
-        } else if (mode === "set") {
-          el.pinModalTitle.textContent = "設定 PIN 碼";
-          el.pinModalDesc.textContent = "請輸入新的 4 位數密碼";
-          el.btnPinCancel.style.display = "inline-flex";
-        } else if (mode === "remove") {
-          el.pinModalTitle.textContent = "解除密碼鎖";
-          el.pinModalDesc.textContent = "輸入目前 PIN 碼以關閉密碼鎖";
-          el.btnPinCancel.style.display = "inline-flex";
-        }
-        el.pinModal.classList.add("open");
-        setTimeout(() => el.pinInput.focus(), 100);
-      }
-
-      function handlePinConfirm() {
-        const val = el.pinInput.value.trim();
-        const savedPin = localStorage.getItem("mytube_pin_v2");
-
-        if (!/^\d{4}$/.test(val)) {
-          showToast("請輸入 4 位數字");
-          return;
-        }
-
-        if (pinMode === "unlock") {
-          if (val === savedPin) {
-            el.pinModal.classList.remove("open");
-            showToast("解鎖成功");
-          } else {
-            showToast("密碼錯誤，請重試");
-            el.pinInput.value = "";
-          }
-        } else if (pinMode === "set") {
-          localStorage.setItem("mytube_pin_v2", val);
-          el.pinModal.classList.remove("open");
-          updatePinButtonUI();
-          showToast("PIN 碼已設定完成");
-        } else if (pinMode === "remove") {
-          if (val === savedPin) {
-            localStorage.removeItem("mytube_pin_v2");
-            el.pinModal.classList.remove("open");
-            updatePinButtonUI();
-            showToast("已關閉密碼鎖");
-          } else {
-            showToast("密碼錯誤");
-            el.pinInput.value = "";
-          }
-        }
-      }
-
-      // 綁定所有按鈕事件
-      function bindEvents() {
-        el.btnImportTrigger.addEventListener("click", () => {
-          el.fileInput.click();
-        });
-
-        el.fileInput.addEventListener("change", (e) => {
-          handleFilesSelected(e.target.files);
-        });
-
-        el.tabVideo.addEventListener("click", () => switchTab("video"));
-        el.tabAudio.addEventListener("click", () => switchTab("audio"));
-
-        el.searchInput.addEventListener("input", (e) => {
-          searchQuery = e.target.value;
-          renderMediaList();
-        });
-
-        el.btnPrev.addEventListener("click", () => playAdjacent(-1));
-        el.btnNext.addEventListener("click", () => playAdjacent(1));
-
-        el.btnLoop.addEventListener("click", () => {
-          isLoopOne = !isLoopOne;
-          el.videoPlayer.loop = isLoopOne;
-          el.audioPlayer.loop = isLoopOne;
-          el.btnLoop.textContent = isLoopOne ? "🔂 單曲循環" : "🔁 循環:關";
-          showToast(isLoopOne ? "已開啟單曲循環" : "已關閉單曲循環");
-        });
-
-        el.btnClosePlayer.addEventListener("click", stopAndClosePlayer);
-
-        // 自動播下一首
-        el.videoPlayer.addEventListener("ended", () => {
-          if (!isLoopOne) playAdjacent(1);
-        });
-        el.audioPlayer.addEventListener("ended", () => {
-          if (!isLoopOne) playAdjacent(1);
-        });
-
-        // PIN 碼按鈕
-        el.btnPinSetting.addEventListener("click", () => {
-          const hasPin = !!localStorage.getItem("mytube_pin_v2");
-          openPinModal(hasPin ? "remove" : "set");
-        });
-        el.btnPinCancel.addEventListener("click", () => {
-          el.pinModal.classList.remove("open");
-        });
-        el.btnPinConfirm.addEventListener("click", handlePinConfirm);
-
-        // 播放清單彈窗按鈕
-        el.btnPlCancel.addEventListener("click", () => {
-          el.playlistModal.classList.remove("open");
-        });
-        el.btnPlConfirm.addEventListener("click", () => {
-          const name = el.playlistNameInput.value.trim();
-          if (!name) {
-            showToast("請輸入清單名稱");
-            return;
-          }
-          const list = getPlaylists();
-          if (!list.includes(name)) {
-            list.push(name);
-            savePlaylists(list);
-          }
-          currentPlaylist = name;
-          el.playlistModal.classList.remove("open");
-          renderPlaylists();
-          renderMediaList();
-          showToast("已建立清單「" + name + "」");
-        });
-
-        el.btnAssignCancel.addEventListener("click", () => {
-          el.assignModal.classList.remove("open");
-        });
-      }
-
-      // 啟動程式
-      async function bootstrap() {
-        bindEvents();
-        updatePinButtonUI();
-
-        const savedPin = localStorage.getItem("mytube_pin_v2");
-        if (savedPin) {
-          openPinModal("unlock");
-        }
-
-        try {
-          await initDB();
-          await loadAllMedia();
-        } catch (err) {
-          console.error("資料庫初始化失敗:", err);
-          showToast("離線資料庫啟動異常，請關閉無痕模式重試");
-        }
-
-        renderPlaylists();
-        renderMediaList();
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bootstrap);
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    req.onerror = (e) => reject(e);
+  });
+}
+
+function dbGet(storeName, key) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+function dbGetAll(storeName) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+function dbPut(storeName, value) {
+  return new Promise((resolve) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = () => resolve();
+  });
+}
+
+// === 3. 手機儲存空間 MYTUBE / MP3 & MYTUBE / MP4 自動分類資料夾寫入核心 ===
+let mytubeRootDirHandle = null;
+let mytubeFolderLabel = '';
+
+async function choosePhoneMytubeFolder() {
+  if (!('showDirectoryPicker' in window)) {
+    showToast('此瀏覽器將自動於「下載項目 / 最近項目」建立 MYTUBE 分類檔');
+    return;
+  }
+  try {
+    const pickedHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    let rootHandle = pickedHandle;
+    if (pickedHandle.name.toUpperCase() !== 'MYTUBE') {
+      rootHandle = await pickedHandle.getDirectoryHandle('MYTUBE', { create: true });
+    }
+    await rootHandle.getDirectoryHandle('MP3', { create: true });
+    await rootHandle.getDirectoryHandle('MP4', { create: true });
+    mytubeRootDirHandle = rootHandle;
+    mytubeFolderLabel = `已綁定實體資料夾：${pickedHandle.name} / MYTUBE / (MP3 & MP4)`;
+    showToast('✓ 已建立 MYTUBE / MP3 與 MP4 資料夾！');
+    if (currentTab === 'DOWNLOAD') renderCurrentView();
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      showToast('已切換為自動下載至手機「最近項目」模式');
+    }
+  }
+}
+
+async function saveToPhoneFolderAndRecents(blob, cleanTitle, fmt) {
+  const isMp4 = fmt.toUpperCase() === 'MP4';
+  const subFolder = isMp4 ? 'MP4' : 'MP3';
+  const ext = isMp4 ? '.mp4' : '.mp3';
+  const safeBaseName = cleanTitle.replace(/[\\/:*?"<>|]/g, '_').trim() || `MyTube_${Date.now()}`;
+  const rawFileName = `${safeBaseName}${ext}`;
+  const recentFriendlyName = `[MYTUBE-${subFolder}] ${rawFileName}`;
+
+  let wroteToRealDir = false;
+  if (mytubeRootDirHandle) {
+    try {
+      const targetSubDir = await mytubeRootDirHandle.getDirectoryHandle(subFolder, { create: true });
+      const fileHandle = await targetSubDir.getFileHandle(rawFileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      wroteToRealDir = true;
+    } catch (e) {
+      wroteToRealDir = false;
+    }
+  }
+
+  triggerBrowserFileDownload(blob, recentFriendlyName);
+  return { wroteToRealDir, subFolder, recentFriendlyName };
+}
+
+function triggerBrowserFileDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1800);
+}
+
+// === 4. 雙重持久化密碼、播完行為設定與個人獨立清單狀態 ===
+let currentTab = 'MP4';
+let selectedPlaylistId = null;
+let appMeta = {
+  pin: null,
+  saveCopyToPhoneFiles: true,
+  mp4EndBehavior: 'next',
+  mp3EndBehavior: 'next',
+  playlists: [
+    { id: 'pl_downloaded', name: '已下載的內容', icon: '⬇', fileIds: [] },
+    { id: 'pl_fav', name: '喜歡的音樂', icon: '👍', fileIds: [] },
+    { id: 'pl_later', name: '稍後觀看', icon: '🕒', fileIds: [] }
+  ],
+  history: []
+};
+let playQueue = [];
+let currentQueueIndex = -1;
+let currentPlayingId = null;
+let mp4UpNextQueue = [];
+let activeFullVideoId = null;
+let mp4ScrollObserver = null;
+let toastTimer = null;
+
+function showToast(msg) {
+  const el = document.getElementById('ytToast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2600);
+}
+
+let bgDownloadState = {
+  active: false,
+  draftUrls: '',
+  draftFormat: 'MP3',
+  statusHtml: '',
+  bannerText: ''
+};
+
+function updateBgBanner() {
+  const banner = document.getElementById('bgTaskBanner');
+  const textEl = document.getElementById('bgTaskText');
+  if (!banner || !textEl) return;
+  if (bgDownloadState.active) {
+    banner.style.display = 'flex';
+    textEl.textContent = bgDownloadState.bannerText;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+async function saveMeta() {
+  if (appMeta.pin) {
+    localStorage.setItem(PIN_STORAGE_KEY, appMeta.pin);
+  }
+  localStorage.setItem(META_STORAGE_KEY, JSON.stringify(appMeta));
+  if (db) {
+    await dbPut('meta', { key: 'appMeta', data: appMeta });
+  }
+}
+
+async function loadSavedMeta() {
+  let dbMeta = null;
+  if (db) {
+    const saved = await dbGet('meta', 'appMeta');
+    if (saved && saved.data) dbMeta = saved.data;
+  }
+  let lsMeta = null;
+  try {
+    const raw = localStorage.getItem(META_STORAGE_KEY);
+    if (raw) lsMeta = JSON.parse(raw);
+  } catch (e) {}
+
+  const merged = { ...appMeta, ...(lsMeta || {}), ...(dbMeta || {}) };
+  const savedPin = (dbMeta && dbMeta.pin) || (lsMeta && lsMeta.pin) || localStorage.getItem(PIN_STORAGE_KEY);
+  if (savedPin && /^\d{4}$/.test(savedPin)) {
+    merged.pin = savedPin;
+  }
+  if (!['next', 'repeat', 'stop'].includes(merged.mp4EndBehavior)) merged.mp4EndBehavior = 'next';
+  if (!['next', 'repeat', 'stop'].includes(merged.mp3EndBehavior)) merged.mp3EndBehavior = 'next';
+  appMeta = merged;
+  await saveMeta();
+}
+
+async function setEndBehavior(type, mode) {
+  if (type === 'MP4') {
+    appMeta.mp4EndBehavior = mode;
+  } else {
+    appMeta.mp3EndBehavior = mode;
+  }
+  await saveMeta();
+  renderCurrentView();
+}
+
+async function setupAuth() {
+  await loadSavedMeta();
+
+  const titleEl = document.getElementById('lockTitle');
+  const descEl = document.getElementById('lockDesc');
+  const pinInput = document.getElementById('pinInput');
+  const confirmEl = document.getElementById('pinConfirm');
+  const btnEl = document.getElementById('pinSubmitBtn');
+  const msgEl = document.getElementById('lockMsg');
+  const resetBtn = document.getElementById('resetPinBtn');
+
+  pinInput.value = '';
+  confirmEl.value = '';
+  msgEl.textContent = '';
+
+  if (!appMeta.pin) {
+    titleEl.textContent = '首次使用 · 設定密碼';
+    descEl.textContent = '請為此裝置設定 4 碼數字密碼（設定後永久記住）';
+    confirmEl.style.display = 'block';
+    resetBtn.style.display = 'none';
+    btnEl.textContent = '儲存密碼並進入';
+
+    btnEl.onclick = async () => {
+      const p1 = pinInput.value.trim();
+      const p2 = confirmEl.value.trim();
+      if (!/^\d{4}$/.test(p1)) { msgEl.textContent = '請輸入 4 位純數字'; return; }
+      if (p1 !== p2) { msgEl.textContent = '兩次輸入的密碼不一致'; return; }
+      appMeta.pin = p1;
+      await saveMeta();
+      unlockApp();
+    };
+  } else {
+    titleEl.textContent = 'MyTube 私人空間';
+    descEl.textContent = '請輸入您的 4 碼數字密碼解鎖';
+    confirmEl.style.display = 'none';
+    resetBtn.style.display = 'inline-block';
+    btnEl.textContent = '解鎖進入';
+
+    const verifyPin = () => {
+      const p = pinInput.value.trim();
+      if (p === appMeta.pin) {
+        unlockApp();
       } else {
-        bootstrap();
+        msgEl.textContent = '❌ 密碼錯誤，請再試一次';
+        pinInput.value = '';
       }
-    })();
-  </script>
+    };
+
+    btnEl.onclick = verifyPin;
+    pinInput.oninput = () => {
+      if (pinInput.value.trim().length === 4) {
+        verifyPin();
+      }
+    };
+  }
+}
+
+async function forgotOrResetPin() {
+  if (!confirm('確定要重設此裝置的 4 碼登入密碼嗎？（已下載的歌曲與播放清單會完整保留）')) return;
+  appMeta.pin = null;
+  localStorage.removeItem(PIN_STORAGE_KEY);
+  await saveMeta();
+  await setupAuth();
+}
+
+function unlockApp() {
+  document.getElementById('pinInput').value = '';
+  document.getElementById('lockMsg').textContent = '';
+  document.getElementById('lockScreen').style.display = 'none';
+  renderCurrentView();
+}
+
+function lockApp() {
+  setupAuth();
+  document.getElementById('lockScreen').style.display = 'flex';
+}
+
+// === 5. 擷取影片首幀靜態封面 ===
+function generateVideoPoster(blob) {
+  return new Promise((resolve) => {
+    const tempUrl = URL.createObjectURL(blob);
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'metadata';
+    v.src = tempUrl;
+
+    const cleanup = (dataUrl) => {
+      URL.revokeObjectURL(tempUrl);
+      resolve(dataUrl);
+    };
+
+    v.onloadeddata = () => {
+      try {
+        v.currentTime = Math.min(0.5, (v.duration || 1) * 0.1);
+      } catch (e) {
+        cleanup(null);
+      }
+    };
+
+    v.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = v.videoWidth || 480;
+        canvas.height = v.videoHeight || 270;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        cleanup(dataUrl);
+      } catch (e) {
+        cleanup(null);
+      }
+    };
+
+    v.onerror = () => cleanup(null);
+    setTimeout(() => cleanup(null), 4000);
+  });
+}
+
+// === 6. 自動寫入本機資料庫與個人獨立清單 ===
+async function storeMediaBlob(title, fmt, blob) {
+  const isMp4 = fmt.toUpperCase() === 'MP4';
+  const ext = isMp4 ? '.mp4' : '.mp3';
+  let posterDataUrl = null;
+  if (isMp4) {
+    posterDataUrl = await generateVideoPoster(blob);
+  }
+  const fileRecord = {
+    id: 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    name: title,
+    fullName: title + ext,
+    type: isMp4 ? 'MP4' : 'MP3',
+    mime: blob.type || (isMp4 ? 'video/mp4' : 'audio/mpeg'),
+    blob: blob,
+    poster: posterDataUrl,
+    addedAt: new Date().toLocaleDateString('zh-TW')
+  };
+  await dbPut('mediaFiles', fileRecord);
+  if (!appMeta.playlists[0].fileIds.includes(fileRecord.id)) {
+    appMeta.playlists[0].fileIds.unshift(fileRecord.id);
+  }
+  await saveMeta();
+  return fileRecord;
+}
+
+async function handleFileImport(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  for (const file of files) {
+    const isMp4 = file.name.toLowerCase().endsWith('.mp4') || file.type.includes('video');
+    const cleanName = file.name.replace(/^\[MYTUBE-(MP3|MP4)\]\s*/i, '').replace(/\.[^/.]+$/, "");
+    await storeMediaBlob(cleanName, isMp4 ? 'MP4' : 'MP3', file);
+  }
+  event.target.value = '';
+  renderCurrentView();
+}
+
+// === 7. MP3 音訊背景連播、鎖定畫面/待機進度條雙向同步拖曳、上一首/下一首 ===
+const audioPlayer = document.getElementById('bgAudioPlayer');
+let isScrubbingAudio = false;
+let lockScreenIconDataUrl = null;
+
+// 產生鎖定畫面/待機控制器專用的高質感黑底白字 MP3 專輯封面圖示
+function getLockScreenArtworkUrl() {
+  if (lockScreenIconDataUrl) return lockScreenIconDataUrl;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0f0f0f';
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = '#ff0000';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(176, 132, 160, 108, 26) : ctx.fillRect(176, 132, 160, 108);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(238, 162);
+    ctx.lineTo(238, 210);
+    ctx.lineTo(284, 186);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = 'bold 54px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('MyTube', 256, 326);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font = '600 30px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillText('離線音樂庫', 256, 376);
+    lockScreenIconDataUrl = canvas.toDataURL('image/png');
+  } catch (e) {
+    lockScreenIconDataUrl = '';
+  }
+  return lockScreenIconDataUrl;
+}
+
+// 同步更新手機待機/鎖定畫面播放器的時間軸位置（讓 iOS/Android 鎖屏進度條可自由前後拉動）
+function syncMediaSessionPositionState() {
+  if (!('mediaSession' in navigator) || typeof navigator.mediaSession.setPositionState !== 'function') return;
+  const dur = audioPlayer.duration;
+  const pos = audioPlayer.currentTime;
+  if (isFinite(dur) && dur > 0 && isFinite(pos) && pos >= 0) {
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: dur,
+        playbackRate: audioPlayer.playbackRate || 1.0,
+        position: Math.min(pos, dur)
+      });
+    } catch (e) {}
+  }
+}
+
+function registerLockScreenMediaHandlers(trackTitle) {
+  if (!('mediaSession' in navigator)) return;
+  const artUrl = getLockScreenArtworkUrl();
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: trackTitle,
+    artist: 'MyTube 離線音樂庫',
+    album: '音樂背景播放',
+    artwork: artUrl ? [
+      { src: artUrl, sizes: '512x512', type: 'image/png' }
+    ] : []
+  });
+
+  const safeSetHandler = (action, handler) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch (e) {}
+  };
+
+  safeSetHandler('play', () => {
+    audioPlayer.play();
+    navigator.mediaSession.playbackState = 'playing';
+    syncMediaSessionPositionState();
+  });
+  safeSetHandler('pause', () => {
+    audioPlayer.pause();
+    navigator.mediaSession.playbackState = 'paused';
+    syncMediaSessionPositionState();
+  });
+  safeSetHandler('nexttrack', () => playNextInQueue());
+  safeSetHandler('previoustrack', () => playPrevInQueue());
+
+  // 關鍵：支援待機/鎖定畫面直接拖曳進度條 (seekto) 與快轉/倒退 (seekforward / seekbackward)
+  safeSetHandler('seekto', (details) => {
+    if (details && typeof details.seekTime === 'number' && isFinite(audioPlayer.duration)) {
+      const target = Math.max(0, Math.min(audioPlayer.duration, details.seekTime));
+      if (details.fastSeek && typeof audioPlayer.fastSeek === 'function') {
+        audioPlayer.fastSeek(target);
+      } else {
+        audioPlayer.currentTime = target;
+      }
+      updateMiniProgressUI(target, audioPlayer.duration, false);
+      syncMediaSessionPositionState();
+    }
+  });
+
+  safeSetHandler('seekforward', (details) => {
+    const skip = (details && details.seekOffset) || 15;
+    if (isFinite(audioPlayer.duration)) {
+      audioPlayer.currentTime = Math.min(audioPlayer.duration, audioPlayer.currentTime + skip);
+      updateMiniProgressUI(audioPlayer.currentTime, audioPlayer.duration, false);
+      syncMediaSessionPositionState();
+    }
+  });
+
+  safeSetHandler('seekbackward', (details) => {
+    const skip = (details && details.seekOffset) || 15;
+    if (isFinite(audioPlayer.duration)) {
+      audioPlayer.currentTime = Math.max(0, audioPlayer.currentTime - skip);
+      updateMiniProgressUI(audioPlayer.currentTime, audioPlayer.duration, false);
+      syncMediaSessionPositionState();
+    }
+  });
+}
+
+function formatSec(sec) {
+  if (!isFinite(sec) || sec < 0) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function updateMiniProgressUI(currentTime, duration, isDragging = false) {
+  const bar = document.getElementById('miniProgressBar');
+  const timeText = document.getElementById('nowPlayingTime');
+  if (!bar || !timeText || !duration) return;
+  const pct = Math.max(0, Math.min(100, (currentTime / duration) * 100));
+  bar.style.width = `${pct}%`;
+  const modeTag = isDragging
+    ? '放開定位'
+    : (appMeta.mp3EndBehavior === 'repeat' ? '單曲重複' : (appMeta.mp3EndBehavior === 'stop' ? '播完停止' : '自動連播'));
+  timeText.textContent = `${formatSec(currentTime)} / ${formatSec(duration)} · ${modeTag}`;
+}
+
+audioPlayer.addEventListener('loadedmetadata', () => {
+  syncMediaSessionPositionState();
+});
+
+audioPlayer.addEventListener('durationchange', () => {
+  syncMediaSessionPositionState();
+});
+
+audioPlayer.addEventListener('seeked', () => {
+  syncMediaSessionPositionState();
+});
+
+audioPlayer.addEventListener('timeupdate', () => {
+  if (isScrubbingAudio) return;
+  if (audioPlayer.duration) {
+    updateMiniProgressUI(audioPlayer.currentTime, audioPlayer.duration, false);
+    syncMediaSessionPositionState();
+  }
+});
+
+audioPlayer.addEventListener('play', () => {
+  document.getElementById('playPauseBtn').textContent = '⏸';
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+  syncMediaSessionPositionState();
+});
+
+audioPlayer.addEventListener('pause', () => {
+  document.getElementById('playPauseBtn').textContent = '▶';
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+  syncMediaSessionPositionState();
+});
+
+audioPlayer.addEventListener('ended', () => {
+  if (isScrubbingAudio) return;
+  if (appMeta.mp3EndBehavior === 'repeat') {
+    audioPlayer.currentTime = 0;
+    audioPlayer.play();
+  } else if (appMeta.mp3EndBehavior === 'stop') {
+    document.getElementById('playPauseBtn').textContent = '▶';
+  } else {
+    playNextInQueue();
+  }
+});
+
+function togglePlayPause() {
+  if (audioPlayer.paused) { audioPlayer.play(); } else { audioPlayer.pause(); }
+}
+
+(function initScrubGesture() {
+  const scrubZone = document.getElementById('miniScrubZone');
+  const track = document.getElementById('miniProgressTrack');
+  if (!scrubZone || !track) return;
+
+  function calcTargetTime(clientX) {
+    if (!audioPlayer.duration || !isFinite(audioPlayer.duration)) return null;
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * audioPlayer.duration;
+  }
+
+  function onStart(clientX) {
+    const t = calcTargetTime(clientX);
+    if (t === null) return;
+    isScrubbingAudio = true;
+    scrubZone.classList.add('scrubbing');
+    updateMiniProgressUI(t, audioPlayer.duration, true);
+  }
+
+  function onMove(clientX) {
+    if (!isScrubbingAudio) return;
+    const t = calcTargetTime(clientX);
+    if (t === null) return;
+    updateMiniProgressUI(t, audioPlayer.duration, true);
+  }
+
+  function onEnd(clientX) {
+    if (!isScrubbingAudio) return;
+    const t = calcTargetTime(clientX);
+    isScrubbingAudio = false;
+    scrubZone.classList.remove('scrubbing');
+    if (t !== null) {
+      audioPlayer.currentTime = t;
+      updateMiniProgressUI(t, audioPlayer.duration, false);
+      syncMediaSessionPositionState();
+    }
+  }
+
+  scrubZone.addEventListener('touchstart', (e) => {
+    if (e.touches.length) {
+      e.preventDefault();
+      onStart(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  scrubZone.addEventListener('touchmove', (e) => {
+    if (isScrubbingAudio && e.touches.length) {
+      e.preventDefault();
+      onMove(e.touches[0].clientX);
+    }
+  }, { passive: false });
+
+  scrubZone.addEventListener('touchend', (e) => {
+    if (isScrubbingAudio) {
+      const x = e.changedTouches && e.changedTouches.length ? e.changedTouches[0].clientX : 0;
+      onEnd(x);
+    }
+  });
+
+  scrubZone.addEventListener('touchcancel', () => {
+    isScrubbingAudio = false;
+    scrubZone.classList.remove('scrubbing');
+  });
+
+  scrubZone.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    onStart(e.clientX);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isScrubbingAudio) onMove(e.clientX);
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (isScrubbingAudio) onEnd(e.clientX);
+  });
+})();
+
+async function playFileById(fileId, queueIds = null) {
+  const record = await dbGet('mediaFiles', fileId);
+  if (!record) return;
+
+  currentPlayingId = fileId;
+  if (queueIds) {
+    playQueue = [...queueIds];
+    currentQueueIndex = playQueue.indexOf(fileId);
+  }
+
+  const blobUrl = URL.createObjectURL(record.blob);
+  const miniPlayer = document.getElementById('miniPlayer');
+  miniPlayer.style.display = 'block';
+  document.getElementById('nowPlayingTitle').textContent = record.name;
+
+  audioPlayer.src = blobUrl;
+  registerLockScreenMediaHandlers(record.name);
+  await audioPlayer.play();
+  syncMediaSessionPositionState();
+  renderCurrentView();
+}
+
+function playNextInQueue() {
+  if (!playQueue.length) return;
+  currentQueueIndex = (currentQueueIndex + 1) % playQueue.length;
+  playFileById(playQueue[currentQueueIndex]);
+}
+
+function playPrevInQueue() {
+  if (!playQueue.length) return;
+  if (audioPlayer.currentTime > 4) {
+    audioPlayer.currentTime = 0;
+    syncMediaSessionPositionState();
+    return;
+  }
+  currentQueueIndex = (currentQueueIndex - 1 + playQueue.length) % playQueue.length;
+  playFileById(playQueue[currentQueueIndex]);
+}
+
+// === 8. 影片焦點中心前 5 秒靜音預覽 + 完整播放 + 播完自動跳下一部/待播佇列 ===
+function startCardFiveSecPreview(cardEl) {
+  if (!cardEl || cardEl.classList.contains('is-playing-full')) return;
+  const video = cardEl.querySelector('video');
+  const posterImg = cardEl.querySelector('.thumb-poster-overlay');
+  if (!video) return;
+
+  document.querySelectorAll('.media-card.is-previewing').forEach(other => {
+    if (other !== cardEl) stopCardFiveSecPreview(other);
+  });
+
+  cardEl.classList.add('is-previewing');
+  video.muted = true;
+  video.controls = false;
+  if (posterImg) posterImg.style.opacity = '0';
+
+  const onTimeUpdate = () => {
+    if (!cardEl.classList.contains('is-previewing')) return;
+    if (video.currentTime >= 5) {
+      video.currentTime = 0;
+    }
+  };
+  video._previewHandler = onTimeUpdate;
+  video.addEventListener('timeupdate', onTimeUpdate);
+  video.play().catch(() => {});
+}
+
+function stopCardFiveSecPreview(cardEl) {
+  if (!cardEl || cardEl.classList.contains('is-playing-full')) return;
+  const video = cardEl.querySelector('video');
+  const posterImg = cardEl.querySelector('.thumb-poster-overlay');
+  cardEl.classList.remove('is-previewing');
+  if (video) {
+    if (video._previewHandler) {
+      video.removeEventListener('timeupdate', video._previewHandler);
+      video._previewHandler = null;
+    }
+    video.pause();
+    try { video.currentTime = 0.1; } catch (e) {}
+  }
+  if (posterImg) posterImg.style.opacity = '1';
+}
+
+function playFullMp4ById(fileId) {
+  const targetCard = document.querySelector(`.media-card[data-id="${fileId}"]`);
+  if (!targetCard) return;
+
+  if (!audioPlayer.paused) audioPlayer.pause();
+
+  document.querySelectorAll('.media-card').forEach(card => {
+    const v = card.querySelector('video');
+    const posterImg = card.querySelector('.thumb-poster-overlay');
+    if (card !== targetCard) {
+      card.classList.remove('is-previewing', 'is-playing-full');
+      if (v) {
+        if (v._previewHandler) {
+          v.removeEventListener('timeupdate', v._previewHandler);
+          v._previewHandler = null;
+        }
+        v.pause();
+        v.controls = false;
+        v.muted = true;
+      }
+      if (posterImg) posterImg.style.opacity = '1';
+    }
+  });
+
+  activeFullVideoId = fileId;
+  targetCard.classList.remove('is-previewing');
+  targetCard.classList.add('is-playing-full');
+  const video = targetCard.querySelector('video');
+  if (video) {
+    if (video._previewHandler) {
+      video.removeEventListener('timeupdate', video._previewHandler);
+      video._previewHandler = null;
+    }
+    video.currentTime = 0;
+    video.muted = false;
+    video.controls = true;
+    video.play().catch(() => {});
+  }
+}
+
+function handleMp4Ended(fileId) {
+  const card = document.querySelector(`.media-card[data-id="${fileId}"]`);
+  if (!card || !card.classList.contains('is-playing-full')) return;
+  const video = card.querySelector('video');
+
+  if (appMeta.mp4EndBehavior === 'repeat') {
+    if (video) {
+      video.currentTime = 0;
+      video.play();
+    }
+  } else if (appMeta.mp4EndBehavior === 'stop') {
+    // 停留在該部影片結束狀態
+  } else {
+    if (mp4UpNextQueue.length > 0) {
+      const nextQueuedId = mp4UpNextQueue.shift();
+      const nextCard = document.querySelector(`.media-card[data-id="${nextQueuedId}"]`);
+      if (nextCard) {
+        nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => playFullMp4ById(nextQueuedId), 350);
+        return;
+      }
+    }
+    const allCards = Array.from(document.querySelectorAll('.media-card'));
+    const idx = allCards.indexOf(card);
+    if (idx !== -1 && idx + 1 < allCards.length) {
+      const nextCard = allCards[idx + 1];
+      const nextId = nextCard.dataset.id;
+      nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => playFullMp4ById(nextId), 350);
+    }
+  }
+}
+
+function setupMp4CenterFocusObserver() {
+  if (mp4ScrollObserver) {
+    mp4ScrollObserver.disconnect();
+    mp4ScrollObserver = null;
+  }
+  const cards = document.querySelectorAll('.media-card');
+  if (!cards.length) return;
+
+  mp4ScrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const card = entry.target;
+      if (card.classList.contains('is-playing-full')) return;
+      if (entry.isIntersecting) {
+        startCardFiveSecPreview(card);
+      } else {
+        stopCardFiveSecPreview(card);
+      }
+    });
+  }, {
+    root: null,
+    rootMargin: '-32% 0px -32% 0px',
+    threshold: 0.1
+  });
+
+  cards.forEach(c => mp4ScrollObserver.observe(c));
+}
+
+// === 9. 仿 YouTube 三個點點選單 & 視覺化「儲存至播放清單」挑選器 + 單檔匯出至手機 MYTUBE 資料夾 ===
+let menuTargetFile = null;
+
+async function openItemMenu(fileId) {
+  const file = await dbGet('mediaFiles', fileId);
+  if (!file) return;
+  menuTargetFile = file;
+
+  const panel = document.getElementById('ytSheetPanel');
+  const typeLabel = file.type === 'MP4' ? '影片' : '音樂';
+
+  panel.innerHTML = `
+    <div class="sheet-drag-bar"></div>
+    <div class="sheet-header">
+      <div class="sheet-header-info">
+        <div class="sheet-item-title">${file.name}</div>
+        <div class="sheet-item-sub">${typeLabel} · ${file.addedAt}</div>
+      </div>
+      <button class="sheet-close-btn" onclick="closeItemMenu()">✕</button>
+    </div>
+
+    <div class="sheet-quick-grid">
+      <button class="sheet-quick-card" onclick="addTargetToUpNext()">
+        <span class="sheet-quick-icon">⏭</span>
+        <span>加入待播清單</span>
+      </button>
+      <button class="sheet-quick-card" onclick="openPlaylistPickerSheet()">
+        <span class="sheet-quick-icon">≣+</span>
+        <span>儲存至播放清單</span>
+      </button>
+    </div>
+
+    <button class="sheet-list-action" onclick="addTargetToUpNext()">
+      <span style="font-size:19px;">≡▶</span>
+      <span>加入待播清單（播完目前曲目後接著播放）</span>
+    </button>
+    <button class="sheet-list-action" onclick="openPlaylistPickerSheet()">
+      <span style="font-size:19px;">➕</span>
+      <span>儲存至播放清單</span>
+    </button>
+    <button class="sheet-list-action" onclick="exportSingleFileToPhoneFolder()">
+      <span style="font-size:19px;">📂</span>
+      <span>存到手機「MYTUBE / ${file.type}」與最近項目</span>
+    </button>
+  `;
+
+  document.getElementById('ytSheetBackdrop').classList.add('open');
+}
+
+async function exportSingleFileToPhoneFolder() {
+  if (!menuTargetFile) return;
+  const file = menuTargetFile;
+  closeItemMenu();
+  await saveToPhoneFolderAndRecents(file.blob, file.name, file.type);
+  showToast(`✓ 已存至手機 MYTUBE / ${file.type} 與最近項目`);
+}
+
+function closeItemMenu() {
+  document.getElementById('ytSheetBackdrop').classList.remove('open');
+  menuTargetFile = null;
+}
+
+async function addTargetToUpNext() {
+  if (!menuTargetFile) return;
+  const file = menuTargetFile;
+
+  if (file.type === 'MP3') {
+    if (!playQueue.length) {
+      closeItemMenu();
+      playFileById(file.id, [file.id]);
+      showToast(`▶ 開始播放「${file.name}」`);
+      return;
+    }
+    const existingIdx = playQueue.indexOf(file.id);
+    if (existingIdx !== -1 && existingIdx > currentQueueIndex) {
+      playQueue.splice(existingIdx, 1);
+    }
+    const insertPos = Math.max(0, currentQueueIndex + 1);
+    playQueue.splice(insertPos, 0, file.id);
+    closeItemMenu();
+    showToast(`✓ 已將「${file.name}」加入待播清單`);
+  } else {
+    mp4UpNextQueue = mp4UpNextQueue.filter(id => id !== file.id);
+    mp4UpNextQueue.unshift(file.id);
+    closeItemMenu();
+    showToast(`✓ 已加入影片待播清單（下一部播放）`);
+  }
+}
+
+async function openPlaylistPickerSheet() {
+  if (!menuTargetFile) return;
+  const file = menuTargetFile;
+  const allFiles = await dbGetAll('mediaFiles');
+  const panel = document.getElementById('ytSheetPanel');
+  const unitText = file.type === 'MP4' ? '1 部影片' : '1 首音樂';
+
+  let rowsHtml = `
+    <div class="pl-picker-row" onclick="createNewPlaylistFromPicker()">
+      <div class="pl-picker-left">
+        <div class="pl-picker-thumb" style="font-size:26px;">＋</div>
+        <div>
+          <div class="pl-picker-name">新增播放清單</div>
+          <div class="pl-picker-count">建立新的私人清單並直接加入</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  for (const pl of appMeta.playlists) {
+    const validIds = pl.fileIds.filter(id => allFiles.some(f => f.id === id));
+    const alreadyIn = pl.fileIds.includes(file.id);
+    const thumbClass = pl.id === 'pl_fav' ? 'pl-picker-thumb liked-grad' : 'pl-picker-thumb';
+
+    rowsHtml += `
+      <div class="pl-picker-row" onclick="toggleFileInPlaylist('${pl.id}')">
+        <div class="pl-picker-left">
+          <div class="${thumbClass}">${pl.icon}</div>
+          <div style="overflow:hidden;">
+            <div class="pl-picker-name">${pl.name}</div>
+            <div class="pl-picker-count">${validIds.length} 個項目</div>
+          </div>
+        </div>
+        <span class="pl-check-badge">${alreadyIn ? '✓ 已加入' : ''}</span>
+      </div>
+    `;
+  }
+
+  panel.innerHTML = `
+    <div class="sheet-drag-bar"></div>
+    <div class="sheet-header" style="margin-bottom:8px;">
+      <div class="sheet-header-info">
+        <div class="sheet-item-title">將 ${unitText}儲存至播放清單</div>
+        <div class="sheet-item-sub">直接點選下方清單即可加入或取消</div>
+      </div>
+      <button class="sheet-close-btn" onclick="closeItemMenu()">✕</button>
+    </div>
+    <div style="max-height:52vh; overflow-y:auto;">
+      ${rowsHtml}
+    </div>
+  `;
+}
+
+async function toggleFileInPlaylist(plId) {
+  if (!menuTargetFile) return;
+  const file = menuTargetFile;
+  const pl = appMeta.playlists.find(p => p.id === plId);
+  if (!pl) return;
+
+  const idx = pl.fileIds.indexOf(file.id);
+  if (idx === -1) {
+    pl.fileIds.push(file.id);
+    await saveMeta();
+    closeItemMenu();
+    showToast(`✓ 已儲存至「${pl.name}」`);
+  } else {
+    pl.fileIds.splice(idx, 1);
+    await saveMeta();
+    await openPlaylistPickerSheet();
+    showToast(`已從「${pl.name}」移除`);
+  }
+  if (currentTab === 'PLAYLIST') renderCurrentView();
+}
+
+async function createNewPlaylistFromPicker() {
+  if (!menuTargetFile) return;
+  const file = menuTargetFile;
+  const name = prompt('請輸入新播放清單名稱（例如：開車音樂、運動歌單）：');
+  if (!name || !name.trim()) return;
+
+  const newPl = {
+    id: 'pl_' + Date.now(),
+    name: name.trim(),
+    icon: '🎵',
+    fileIds: [file.id]
+  };
+  appMeta.playlists.push(newPl);
+  await saveMeta();
+  closeItemMenu();
+  showToast(`✓ 已建立「${newPl.name}」並加入項目`);
+  if (currentTab === 'PLAYLIST') renderCurrentView();
+}
+
+// === 10. 分頁切換與畫面渲染 ===
+function switchTab(tab) {
+  if (currentTab === 'DOWNLOAD') {
+    const urlEl = document.getElementById('dlUrls');
+    const fmtEl = document.getElementById('dlFormat');
+    if (urlEl) bgDownloadState.draftUrls = urlEl.value;
+    if (fmtEl) bgDownloadState.draftFormat = fmtEl.value;
+  }
+  if (mp4ScrollObserver) {
+    mp4ScrollObserver.disconnect();
+    mp4ScrollObserver = null;
+  }
+  currentTab = tab;
+  selectedPlaylistId = null;
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  renderCurrentView();
+}
+
+function renderPlayModeBar(type) {
+  const currentMode = type === 'MP4' ? appMeta.mp4EndBehavior : appMeta.mp3EndBehavior;
+  const nextLabel = type === 'MP4' ? '自動播下一部' : '自動播下一首';
+  return `
+    <div class="play-mode-bar">
+      <span class="play-mode-label">播完設定</span>
+      <div class="play-mode-pills">
+        <button class="mode-chip ${currentMode === 'next' ? 'active' : ''}" onclick="setEndBehavior('${type}', 'next')">${nextLabel}</button>
+        <button class="mode-chip ${currentMode === 'repeat' ? 'active' : ''}" onclick="setEndBehavior('${type}', 'repeat')">重複播放</button>
+        <button class="mode-chip ${currentMode === 'stop' ? 'active' : ''}" onclick="setEndBehavior('${type}', 'stop')">播完停止</button>
+      </div>
+    </div>
+  `;
+}
+
+async function renderCurrentView() {
+  const container = document.getElementById('mainContent');
+  const allFiles = await dbGetAll('mediaFiles');
+
+  if (currentTab === 'MP4') {
+    const mp4List = allFiles.filter(f => f.type === 'MP4').reverse();
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div>
+          <div style="font-size:20px; font-weight:800;">所有影片</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:2px;">共 ${mp4List.length} 部本機專屬影片（滑至畫面中央自動預覽前 5 秒）</div>
+        </div>
+        <button class="pill-btn pill-ghost pill-sm" onclick="document.getElementById('filePicker').click()">+ 讀取影片</button>
+      </div>
+      ${renderPlayModeBar('MP4')}
+    `;
+
+    if (!mp4List.length) {
+      html += `<div style="text-align:center; padding:45px 10px; color:var(--sub); font-size:14px;">
+        目前還沒有影片<br><br>點上方「下載」分頁抓取或按右上角「+ 讀取影片」匯入
+      </div>`;
+    } else {
+      for (const item of mp4List) {
+        const videoUrl = URL.createObjectURL(item.blob);
+        if (!item.poster) {
+          generateVideoPoster(item.blob).then(async (posterUrl) => {
+            if (posterUrl) {
+              item.poster = posterUrl;
+              await dbPut('mediaFiles', item);
+              const imgEl = document.querySelector(`.media-card[data-id="${item.id}"] .thumb-poster-overlay`);
+              if (imgEl) {
+                imgEl.src = posterUrl;
+                imgEl.style.display = 'block';
+              }
+            }
+          });
+        }
+
+        html += `
+        <div class="media-card" data-id="${item.id}">
+          <div class="media-thumb" onclick="if(!this.parentElement.classList.contains('is-playing-full')) playFullMp4ById('${item.id}')">
+            <video src="${videoUrl}#t=0.1" playsinline muted preload="metadata" onended="handleMp4Ended('${item.id}')"></video>
+            <img class="thumb-poster-overlay" src="${item.poster || ''}" style="${item.poster ? '' : 'display:none;'}" alt="" />
+            <div class="preview-badge">▶ 預覽前 5 秒中</div>
+            <div class="play-center-hint">▶</div>
+            <span class="type-tag tag-mp4">影片</span>
+          </div>
+          <div class="media-row">
+            <div style="flex:1; overflow:hidden; cursor:pointer;" onclick="playFullMp4ById('${item.id}')">
+              <div class="media-title">${item.name}</div>
+              <div class="media-sub">影片 · ${item.addedAt}（點擊放大有聲播放）</div>
+            </div>
+            <button class="dots-btn" aria-label="更多選項" onclick="event.stopPropagation(); openItemMenu('${item.id}')">⋮</button>
+          </div>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+    setTimeout(() => setupMp4CenterFocusObserver(), 80);
+  }
+
+  else if (currentTab === 'MP3') {
+    const mp3List = allFiles.filter(f => f.type === 'MP3').reverse();
+    const queueIds = mp3List.map(f => f.id);
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div>
+          <div style="font-size:20px; font-weight:800;">所有音樂</div>
+          <div style="font-size:12px; color:var(--sub); margin-top:2px;">共 ${mp3List.length} 首本機專屬音樂（關機不遺失）</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          ${mp3List.length ? `<button class="pill-btn pill-primary pill-sm" onclick="playFileById('${mp3List[0].id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">全部播放</button>` : ''}
+          <button class="pill-btn pill-ghost pill-sm" onclick="document.getElementById('filePicker').click()">+ 讀取音樂</button>
+        </div>
+      </div>
+      ${renderPlayModeBar('MP3')}
+    `;
+
+    if (!mp3List.length) {
+      html += `<div style="text-align:center; padding:45px 10px; color:var(--sub); font-size:14px;">
+        目前還沒有音樂<br><br>點上方「下載」分頁抓取後，音樂會直接自動出現在這裡！
+      </div>`;
+    } else {
+      for (const song of mp3List) {
+        const isPlaying = currentPlayingId === song.id;
+        html += `
+        <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="playFileById('${song.id}', ${JSON.stringify(queueIds).replace(/"/g, '&quot;')})">
+          <div class="song-left">
+            <div class="mp3-black-box">MP3</div>
+            <div class="song-info">
+              <div class="song-title">${song.name}</div>
+              <div class="song-meta">此裝置專屬庫 · ${song.addedAt}</div>
+            </div>
+          </div>
+          <button class="dots-btn" aria-label="更多選項" onclick="event.stopPropagation(); openItemMenu('${song.id}')">⋮</button>
+        </div>`;
+      }
+    }
+    container.innerHTML = html;
+  }
+
+  else if (currentTab === 'PLAYLIST') {
+    if (selectedPlaylistId) {
+      const pl = appMeta.playlists.find(p => p.id === selectedPlaylistId);
+      const plFiles = pl.fileIds.map(id => allFiles.find(f => f.id === id)).filter(Boolean);
+      const qIds = plFiles.filter(f => f.type === 'MP3').map(f => f.id);
+
+      let html = `
+        <button class="pill-btn pill-ghost pill-sm" onclick="selectedPlaylistId=null; renderCurrentView();" style="margin-bottom:12px;">← 返回播放清單</button>
+        <h2 style="margin:0 0 4px 0; font-size:20px;">${pl.icon} ${pl.name}</h2>
+        <div style="font-size:12px; color:var(--sub); margin-bottom:14px;">此裝置私人清單 · ${plFiles.length} 個項目</div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          ${qIds.length ? `<button class="pill-btn pill-primary pill-sm" onclick="playFileById('${qIds[0]}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})">▶ 全部播放</button>` : ''}
+        </div>
+      `;
+
+      if (!plFiles.length) {
+        html += `<p style="color:var(--sub); font-size:13px;">清單目前是空的，可到影片或音樂頁面點擊項目右側「⋮」加入此清單。</p>`;
+      } else {
+        plFiles.forEach((f) => {
+          const isPlaying = currentPlayingId === f.id;
+          const typeLabel = f.type === 'MP4' ? '影片' : '音樂';
+          const clickAction = f.type === 'MP4'
+            ? `switchTab('MP4'); setTimeout(()=>playFullMp4ById('${f.id}'), 150);`
+            : `playFileById('${f.id}', ${JSON.stringify(qIds).replace(/"/g, '&quot;')})`;
+
+          html += `
+          <div class="song-row ${isPlaying ? 'playing' : ''}" onclick="${clickAction}">
+            <div class="song-left">
+              <div class="mp3-black-box">${typeLabel}</div>
+              <div class="song-info">
+                <div class="song-title">${f.name}</div>
+                <div class="song-meta">${typeLabel} · 點擊播放</div>
+              </div>
+            </div>
+            <button class="dots-btn" onclick="event.stopPropagation(); openItemMenu('${f.id}')">⋮</button>
+          </div>`;
+        });
+      }
+      container.innerHTML = html;
+      return;
+    }
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="font-size:20px; font-weight:800;">媒體庫 · 個人播放清單</div>
+        <button class="pill-btn pill-primary pill-sm" onclick="createNewPlaylist()">➕ 新增清單</button>
+      </div>
+    `;
+
+    for (const pl of appMeta.playlists) {
+      const validCount = pl.fileIds.filter(id => allFiles.some(f => f.id === id)).length;
+      html += `
+      <div class="pl-item" onclick="selectedPlaylistId='${pl.id}'; renderCurrentView();">
+        <div class="pl-left">
+          <div class="pl-cover">
+            <span>${pl.icon}</span>
+            <span class="pl-count">≡ ${validCount}</span>
+          </div>
+          <div style="overflow:hidden;">
+            <div style="font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${pl.name}</div>
+            <div style="font-size:12px; color:var(--sub); margin-top:3px;">此裝置私人清單 · ${validCount} 個項目</div>
+          </div>
+        </div>
+        <span style="color:var(--sub); font-size:18px; padding-left:8px;">›</span>
+      </div>`;
+    }
+    container.innerHTML = html;
+  }
+
+  else if (currentTab === 'DOWNLOAD') {
+    let histHtml = '';
+    if (!appMeta.history.length) {
+      histHtml = '<div style="color:var(--sub); font-size:13px;">尚無下載紀錄</div>';
+    } else {
+      for (const h of [...appMeta.history].reverse()) {
+        const bg = h.format === 'MP4' ? '#0f0f0f' : '#b83318';
+        const badgeText = h.format === 'MP4' ? '影片' : '音樂';
+        histHtml += `
+        <div class="hist-card">
+          <div style="overflow:hidden; padding-right:10px;">
+            <div style="font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${h.title}</div>
+            <div style="font-size:11px; color:var(--sub); margin-top:3px;">${h.time}</div>
+          </div>
+          <span style="background:${bg}; color:#fff; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; flex-shrink:0;">${badgeText}</span>
+        </div>`;
+      }
+    }
+
+    const supportsDirPicker = 'showDirectoryPicker' in window;
+
+    container.innerHTML = `
+      <div class="dl-header">
+        <div class="avatar-circle">Y</div>
+        <div>
+          <div style="font-size:20px; font-weight:800;">YouTube 下載器</div>
+          <div style="font-size:12px; color:var(--sub);">自動存入手機儲存空間 MYTUBE / MP3 & MP4 與最近項目</div>
+        </div>
+      </div>
+
+      <div class="folder-sync-card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <label style="font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="saveFileCopyChk" ${appMeta.saveCopyToPhoneFiles ? 'checked' : ''} onchange="toggleSaveFileCopy(this.checked)" />
+            同步存入手機空間與最近項目
+          </label>
+          ${supportsDirPicker ? `<button class="pill-btn pill-ghost pill-sm" onclick="choosePhoneMytubeFolder()">📂 指定 MYTUBE 位置</button>` : ''}
+        </div>
+        <div class="folder-tree-badge">
+          <span class="tree-pill">📁 MYTUBE / MP3</span>
+          <span class="tree-pill">📁 MYTUBE / MP4</span>
+          <span class="tree-pill">🕒 系統最近項目同步顯示</span>
+        </div>
+        <div style="font-size:11px; color:var(--sub); margin-top:6px;">
+          ${mytubeFolderLabel ? mytubeFolderLabel : '下載時自動歸類為 [MYTUBE-MP3] 與 [MYTUBE-MP4]，直接在手機「檔案 App → 最近項目 / 下載項目」最上方就能找到'}
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; gap:8px;">
+        <select id="dlFormat" onchange="bgDownloadState.draftFormat=this.value" style="border-radius:999px; border:1px solid var(--border); padding:7px 14px; font-size:13px; font-weight:600; background:var(--bg-elevated); color:var(--text); width:100%;">
+          <option value="MP3" ${bgDownloadState.draftFormat === 'MP3' ? 'selected' : ''}>音樂 (MP3 純音訊 → 存入 MYTUBE / MP3)</option>
+          <option value="MP4" ${bgDownloadState.draftFormat === 'MP4' ? 'selected' : ''}>影片 (MP4 高畫質 → 存入 MYTUBE / MP4)</option>
+        </select>
+      </div>
+
+      <textarea id="dlUrls" oninput="bgDownloadState.draftUrls=this.value" class="url-box" placeholder="在此貼上 1 個或多個 YouTube 網址（用空白鍵或換行隔開）...">${bgDownloadState.draftUrls}</textarea>
+
+      <div style="display:flex; gap:10px; margin:12px 0 16px 0;">
+        <button id="startDlBtn" class="pill-btn pill-primary" style="flex:1;" ${bgDownloadState.active ? 'disabled' : ''} onclick="startBackgroundBatchDownload()">${bgDownloadState.active ? '⏳ 背景下載中...' : '開始下載'}</button>
+        <button class="pill-btn pill-ghost" style="flex:1;" onclick="clearUrlDraft()">清空網址</button>
+      </div>
+
+      <div id="dlStatus" style="font-size:13px; color:var(--text); margin-bottom:14px; line-height:1.5;">${bgDownloadState.statusHtml}</div>
+
+      <div style="font-size:18px; font-weight:800; margin:14px 0 10px 0;">下載紀錄 <span style="font-weight:400; color:var(--sub);">&gt;</span></div>
+      ${histHtml}
+    `;
+  }
+}
+
+function clearUrlDraft() {
+  bgDownloadState.draftUrls = '';
+  const el = document.getElementById('dlUrls');
+  if (el) el.value = '';
+}
+
+async function toggleSaveFileCopy(checked) {
+  appMeta.saveCopyToPhoneFiles = checked;
+  await saveMeta();
+}
+
+// === 11. 獨立背景下載引擎 ===
+const PUBLIC_COBALT_NODES = [
+  'https://api.cobalt.tools/',
+  'https://cobalt-api.kwiatekmiki.com/',
+  'https://cobalt.api.timelessnesses.me/'
+];
+
+async function fetchFromPublicEngine(youtubeUrl, fmt) {
+  const isAudio = fmt.toUpperCase() !== 'MP4';
+  const payload = {
+    url: youtubeUrl,
+    downloadMode: isAudio ? 'audio' : 'auto',
+    audioFormat: 'mp3',
+    videoQuality: '1080'
+  };
+
+  let lastError = '解析節點忙碌中';
+  for (const endpoint of PUBLIC_COBALT_NODES) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data && data.url) {
+        const mediaRes = await fetch(data.url);
+        if (!mediaRes.ok) throw new Error('串流讀取失敗');
+        const blob = await mediaRes.blob();
+        const rawFilename = data.filename ? data.filename.replace(/\.[^/.]+$/, '') : `YouTube_${fmt}_${Date.now()}`;
+        return { title: rawFilename, blob };
+      }
+      if (data && data.error && data.error.code) {
+        lastError = data.error.code;
+      }
+    } catch (e) {
+      lastError = e.message;
+    }
+  }
+  throw new Error(lastError);
+}
+
+function syncDownloadStatusUI(htmlText) {
+  bgDownloadState.statusHtml = htmlText;
+  if (currentTab === 'DOWNLOAD') {
+    const statusEl = document.getElementById('dlStatus');
+    if (statusEl) statusEl.innerHTML = htmlText;
+  }
+}
+
+async function startBackgroundBatchDownload() {
+  if (bgDownloadState.active) return;
+
+  const urlEl = document.getElementById('dlUrls');
+  const fmtEl = document.getElementById('dlFormat');
+  const raw = (urlEl ? urlEl.value : bgDownloadState.draftUrls).trim();
+  const fmt = fmtEl ? fmtEl.value : bgDownloadState.draftFormat;
+  const tabDisplayName = fmt === 'MP4' ? '影片' : '音樂';
+  const urls = raw.split(/[\s,，]+/).filter(Boolean);
+
+  if (!urls.length) {
+    syncDownloadStatusUI('⚠️ 請先貼上至少一個 YouTube 網址');
+    return;
+  }
+
+  bgDownloadState.active = true;
+  bgDownloadState.bannerText = `⏳ 正在背景下載 1 / ${urls.length} 個檔案...`;
+  updateBgBanner();
+
+  const btnEl = document.getElementById('startDlBtn');
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = '⏳ 背景下載中...';
+  }
+
+  let successCount = 0;
+
+  for (let i = 0; i < urls.length; i++) {
+    const targetUrl = urls[i];
+    bgDownloadState.bannerText = `⏳ 背景下載中 (${i + 1} / ${urls.length})...`;
+    updateBgBanner();
+    syncDownloadStatusUI(`⏳ 正在背景處理第 <b>${i + 1} / ${urls.length}</b> 個項目...<br><span style="color:var(--sub); font-size:12px;">（將自動存入手機 MYTUBE / ${fmt} 分類並顯示於最近項目）</span>`);
+
+    try {
+      const { title, blob } = await fetchFromPublicEngine(targetUrl, fmt);
+      await storeMediaBlob(title, fmt, blob);
+
+      if (appMeta.saveCopyToPhoneFiles) {
+        await saveToPhoneFolderAndRecents(blob, title, fmt);
+      }
+
+      appMeta.history.push({
+        title: `[MYTUBE-${fmt}] ${title}`,
+        format: fmt,
+        time: new Date().toLocaleString('zh-TW', { hour12: false })
+      });
+      await saveMeta();
+      successCount++;
+
+      if (currentTab === 'MP3' || currentTab === 'MP4') {
+        renderCurrentView();
+      }
+    } catch (err) {
+      syncDownloadStatusUI(bgDownloadState.statusHtml + `<br><span style="color:#ff3b30;">❌ 第 ${i + 1} 個無法直接抓取（${err.message}），可改用「+ 讀取音樂 / + 讀取影片」匯入本機檔</span>`);
+    }
+  }
+
+  bgDownloadState.active = false;
+  updateBgBanner();
+
+  if (successCount > 0) {
+    bgDownloadState.draftUrls = '';
+    syncDownloadStatusUI(`🎉 下載完成！已將 <b>${successCount}</b> 個檔案自動存入 App「${tabDisplayName}」分頁，並同步歸類至手機儲存空間「MYTUBE / ${fmt}」與「最近項目」！`);
+  }
+
+  if (currentTab === 'DOWNLOAD' || currentTab === 'MP3' || currentTab === 'MP4') {
+    renderCurrentView();
+  }
+}
+
+async function createNewPlaylist() {
+  const name = prompt('請輸入新播放清單名稱（例如：開車音樂、運動歌單）：');
+  if (!name || !name.trim()) return;
+  appMeta.playlists.push({
+    id: 'pl_' + Date.now(),
+    name: name.trim(),
+    icon: '🎵',
+    fileIds: []
+  });
+  await saveMeta();
+  renderCurrentView();
+}
+
+(async () => {
+  await requestPersistentStorage();
+  await initDB();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  await setupAuth();
+})();
+</script>
 </body>
 </html>
